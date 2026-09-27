@@ -43,12 +43,11 @@
     import { createRoot } from 'react-dom/client';
     import { initializeApp } from 'firebase/app';
     import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
+    import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
     import { 
-      getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, writeBatch 
-    } from 'firebase/firestore';
-    import { 
-      BookOpen, Users, HelpCircle, Award, Plus, Trash2, Edit3, Clock, 
-      AlertTriangle, RefreshCw, Square, CheckCircle, Search, UserX, ShieldAlert
+      Users, BookOpen, HelpCircle, Award, Plus, Trash2, 
+      RotateCcw, StopCircle, RefreshCw, AlertTriangle, CheckCircle2, 
+      X, FileText, UserPlus, Layers, ShieldCheck
     } from 'lucide-react';
 
     // Konfigurasi Firebase
@@ -74,30 +73,45 @@
       : null;
 
     function TeacherApp() {
-      const [activeTab, setActiveTab] = useState('monitoring'); // monitoring | materials | questions | students | scores
+      const [activeTab, setActiveTab] = useState('monitoring');
 
-      // State Data Utama
-      const [studentsList, setStudentsList] = useState([]);
+      // States Data Realtime
+      const [students, setStudents] = useState([]);
       const [materials, setMaterials] = useState([]);
       const [questions, setQuestions] = useState([]);
-      const [presence, setPresence] = useState({});
+      const [presenceList, setPresenceList] = useState([]);
       const [scores, setScores] = useState([]);
 
-      // Filter State
+      // State Filter Monitoring Sesi Siswa
       const [filterKelas, setFilterKelas] = useState('7');
       const [filterSubKelas, setFilterSubKelas] = useState('A');
-      const [searchTerm, setSearchTerm] = useState('');
 
-      // Form Modals / Input States
+      // Form Add Student
       const [newStudentName, setNewStudentName] = useState('');
       const [newStudentNISN, setNewStudentNISN] = useState('');
+      const [newStudentKelas, setNewStudentKelas] = useState('7');
+      const [newStudentSubKelas, setNewStudentSubKelas] = useState('A');
 
-      const [matForm, setMatForm] = useState({ id: '', title: '', content: '', durationMinutes: 15, source: '', imageUrl: '' });
-      const [isEditMat, setIsEditMat] = useState(false);
+      // Form Add Material
+      const [matTitle, setMatTitle] = useState('');
+      const [matKelas, setMatKelas] = useState('7');
+      const [matSubKelasTarget, setMatSubKelasTarget] = useState('semua');
+      const [matDuration, setMatDuration] = useState('15');
+      const [matContent, setMatContent] = useState('');
+      const [matImage, setMatImage] = useState('');
+      const [matSource, setMatSource] = useState('');
 
-      const [questForm, setQuestForm] = useState({ id: '', materialId: '', type: 'pg', questionText: '', optionA: '', optionB: '', optionC: '', optionD: '', correctAnswer: 'A' });
+      // Form Add Question
+      const [qMaterialId, setQMaterialId] = useState('');
+      const [qType, setQType] = useState('pg');
+      const [qText, setQText] = useState('');
+      const [qOptA, setQOptA] = useState('');
+      const [qOptB, setQOptB] = useState('');
+      const [qOptC, setQOptC] = useState('');
+      const [qOptD, setQOptD] = useState('');
+      const [qCorrect, setQCorrect] = useState('A');
 
-      // Synchronize Firebase Auth & Firestore Listeners
+      // Firebase Auth & Realtime Sync
       useEffect(() => {
         const initAuth = async () => {
           try {
@@ -112,35 +126,51 @@
         };
         initAuth();
 
-        // 1. Sync Siswa
+        // 1. Sync Students
         const unsubStudents = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'students'), (snap) => {
           const list = snap.docs.map(doc => doc.data());
-          setStudentsList(list);
+          setStudents(list);
+          localStorage.setItem('elearning_students_v3', JSON.stringify(list));
+        }, () => {
+          const local = localStorage.getItem('elearning_students_v3');
+          if (local) setStudents(JSON.parse(local));
         });
 
-        // 2. Sync Materi
+        // 2. Sync Materials
         const unsubMaterials = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'materials'), (snap) => {
           const list = snap.docs.map(doc => doc.data());
           setMaterials(list);
+          if (list.length > 0 && !qMaterialId) setQMaterialId(list[0].id);
+          localStorage.setItem('elearning_materials_v3', JSON.stringify(list));
+        }, () => {
+          const local = localStorage.getItem('elearning_materials_v3');
+          if (local) setMaterials(JSON.parse(local));
         });
 
-        // 3. Sync Soal
+        // 3. Sync Questions
         const unsubQuestions = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'questions'), (snap) => {
           const list = snap.docs.map(doc => doc.data());
           setQuestions(list);
+          localStorage.setItem('elearning_questions_v3', JSON.stringify(list));
+        }, () => {
+          const local = localStorage.getItem('elearning_questions_v3');
+          if (local) setQuestions(JSON.parse(local));
         });
 
-        // 4. Sync Presence (Monitoring Belajar)
+        // 4. Sync Presence (Monitoring Live Sesi)
         const unsubPresence = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'student_presence'), (snap) => {
-          const map = {};
-          snap.docs.forEach(d => { map[d.id] = d.data(); });
-          setPresence(map);
+          const list = snap.docs.map(doc => doc.data());
+          setPresenceList(list);
         });
 
-        // 5. Sync Nilai Kuis
+        // 5. Sync Scores
         const unsubScores = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'scores'), (snap) => {
           const list = snap.docs.map(doc => doc.data());
           setScores(list);
+          localStorage.setItem('elearning_scores_v3', JSON.stringify(list));
+        }, () => {
+          const local = localStorage.getItem('elearning_scores_v3');
+          if (local) setScores(JSON.parse(local));
         });
 
         return () => {
@@ -152,627 +182,727 @@
         };
       }, []);
 
-      // Broadcast channel listener untuk real-time sync lokal
+      // Broadcast Listener
       useEffect(() => {
         if (!broadcast) return;
         const handleMessage = (event) => {
           const { type, payload } = event.data || {};
-          if (type === 'STUDENT_PRESENCE_UPDATE' && payload) {
-            setPresence(prev => ({ ...prev, [payload.id]: payload }));
+          if (type === 'STUDENT_PRESENCE_UPDATE') {
+            setPresenceList(prev => {
+              const idx = prev.findIndex(p => p.id === payload.id);
+              if (idx >= 0) {
+                const nextArr = [...prev];
+                nextArr[idx] = payload;
+                return nextArr;
+              }
+              return [payload, ...prev];
+            });
           }
         };
         broadcast.addEventListener('message', handleMessage);
         return () => broadcast.removeEventListener('message', handleMessage);
       }, []);
 
-      // === FITUR BARU MANAGEMENT SESI SISWA ===
-
-      // 1. Hentikan Sesi Siswa
-      const handleStopSession = async (presenceId) => {
-        const item = presence[presenceId];
-        if (!item) return;
-
-        const updated = { ...item, status: 'stopped', remainingSeconds: 0, lastUpdated: Date.now() };
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presenceId), updated);
-        if (broadcast) broadcast.postMessage({ type: 'TEACHER_STOP_SESSION', payload: updated });
-      };
-
-      // 2. Reset Sesi Siswa
-      const handleResetSession = async (presenceId) => {
-        const item = presence[presenceId];
-        if (!item) return;
-
-        const mat = materials.find(m => m.id === item.materialId);
-        const resetSeconds = mat ? (mat.durationMinutes || 15) * 60 : 900;
-
-        const updated = { 
-          ...item, 
-          status: 'active', 
-          remainingSeconds: resetSeconds, 
-          lastUpdated: Date.now() 
-        };
-
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presenceId), updated);
-        if (broadcast) broadcast.postMessage({ type: 'TEACHER_RESET_STATUS', payload: updated });
-      };
-
-      // 3. Hapus Sesi Siswa Individual
-      const handleDeleteSession = async (presenceId) => {
-        if (confirm("Apakah Anda yakin ingin menghapus data pantauan sesi belajar siswa ini?")) {
-          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presenceId));
-        }
-      };
-
-      // === FITUR BARU HAPUS KELAS TERPILIH ===
-      const handleDeleteSelectedClass = async () => {
-        const targetClassStr = `Kelas ${filterKelas}${filterSubKelas}`;
-        const confirmText = `APAKAH ANDA YAKIN INGIN MENGHAPUS SEMUA DATA PADA ${targetClassStr}?\n\nTindakan ini akan menghapus:\n1. Seluruh Daftar Siswa di ${targetClassStr}\n2. Seluruh Record Sesi Belajar di ${targetClassStr}`;
-        
-        if (confirm(confirmText)) {
-          const batch = writeBatch(db);
-
-          // A. Hapus siswa pada kelas terpilih
-          const classStudents = studentsList.filter(s => 
-            (s.kelas === filterKelas || s.kelas === `Kelas ${filterKelas}`) &&
-            (s.subKelas === filterSubKelas || s.subKelas === `Rombel ${filterSubKelas}`)
-          );
-          classStudents.forEach(s => {
-            batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'students', s.id));
-          });
-
-          // B. Hapus presence pada kelas terpilih
-          Object.values(presence).forEach(p => {
-            if (p.kelas === `${filterKelas}${filterSubKelas}`) {
-              batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', p.id));
-            }
-          });
-
-          await batch.commit();
-          alert(`Berhasil menghapus seluruh data siswa dan sesi pada ${targetClassStr}.`);
-        }
-      };
-
-      // === CRUD SISWA ===
+      // ACTION 1: Tambah Siswa Baru
       const handleAddStudent = async (e) => {
         e.preventDefault();
         if (!newStudentName.trim()) return;
 
-        const newId = 'std_' + Date.now();
+        const newId = 'stu_' + Date.now();
         const studentObj = {
           id: newId,
           name: newStudentName.trim(),
-          nisn: newStudentNISN.trim(),
-          kelas: filterKelas,
-          subKelas: filterSubKelas,
+          nisn: newStudentNISN.trim() || '-',
+          kelas: newStudentKelas,
+          subKelas: newStudentSubKelas,
           createdAt: Date.now()
         };
 
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', newId), studentObj);
+        const updated = [...students, studentObj];
+        setStudents(updated);
+        localStorage.setItem('elearning_students_v3', JSON.stringify(updated));
+
+        try {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', newId), studentObj);
+        } catch (err) {}
+
         setNewStudentName('');
         setNewStudentNISN('');
       };
 
-      const handleDeleteStudent = async (studentId) => {
-        if (confirm("Hapus siswa ini dari daftar kelas?")) {
-          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId));
-        }
+      // ACTION 2: Hapus Siswa Individual
+      const handleDeleteStudent = async (id) => {
+        if (!confirm('Apakah Anda yakin ingin menghapus data siswa ini?')) return;
+        const updated = students.filter(s => s.id !== id);
+        setStudents(updated);
+        localStorage.setItem('elearning_students_v3', JSON.stringify(updated));
+
+        try {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id));
+        } catch (err) {}
       };
 
-      // === CRUD MATERI ===
-      const handleSaveMaterial = async (e) => {
-        e.preventDefault();
-        if (!matForm.title || !matForm.content) return;
+      // ACTION 3: HAPUS KELAS YANG DIPILIH (Beserta seluruh data siswa di kelas tersebut)
+      const handleDeleteSelectedClass = async () => {
+        const targetLabel = `Kelas ${filterKelas} (Rombel ${filterSubKelas})`;
+        const studentsInClass = students.filter(s => s.kelas === filterKelas && s.subKelas === filterSubKelas);
 
-        const matId = isEditMat ? matForm.id : 'mat_' + Date.now();
-        const matData = {
+        if (studentsInClass.length === 0) {
+          alert(`Tidak ada data siswa di ${targetLabel} untuk dihapus.`);
+          return;
+        }
+
+        if (!confirm(`PERINGATAN TINGGI!\nApakah Anda yakin ingin MENGHAPUS SELURUH KELAS ${targetLabel}?\nSebanyak ${studentsInClass.length} siswa di kelas ini akan dihapus permanen.`)) {
+          return;
+        }
+
+        // Filter daftar siswa lokal
+        const remainingStudents = students.filter(s => !(s.kelas === filterKelas && s.subKelas === filterSubKelas));
+        setStudents(remainingStudents);
+        localStorage.setItem('elearning_students_v3', JSON.stringify(remainingStudents));
+
+        // Hapus Firestore
+        for (const stu of studentsInClass) {
+          try {
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', stu.id));
+          } catch (e) {}
+        }
+
+        // Hapus juga presensi dan skor siswa yang ada di kelas ini
+        const presencesToDelete = presenceList.filter(p => p.kelas === `${filterKelas}${filterSubKelas}`);
+        for (const p of presencesToDelete) {
+          try {
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', p.id));
+          } catch (e) {}
+        }
+
+        alert(`Seluruh data ${targetLabel} berhasil dihapus.`);
+      };
+
+      // ACTION 4: HENTIKAN SESI SISWA
+      const handleStopSession = async (presence) => {
+        if (!confirm(`Hentikan sesi membaca/kuis untuk ${presence.studentName}?`)) return;
+
+        const updatedPayload = {
+          ...presence,
+          remainingSeconds: 0,
+          status: 'stopped',
+          lastUpdated: Date.now()
+        };
+
+        if (broadcast) broadcast.postMessage({ type: 'TEACHER_RESET_STATUS', payload: updatedPayload });
+
+        try {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presence.id), updatedPayload);
+        } catch (e) {}
+      };
+
+      // ACTION 5: RESET SESI SISWA (Normal kembali / Buka Peringatan Tab)
+      const handleResetSession = async (presence) => {
+        if (!confirm(`Reset sesi peringatan untuk ${presence.studentName}? Siswa akan dapat melanjutkan kembali.`)) return;
+
+        const updatedPayload = {
+          ...presence,
+          status: 'active',
+          lastUpdated: Date.now()
+        };
+
+        if (broadcast) broadcast.postMessage({ type: 'TEACHER_RESET_STATUS', payload: updatedPayload });
+
+        try {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presence.id), updatedPayload);
+        } catch (e) {}
+      };
+
+      // ACTION 6: HAPUS SESI SISWA
+      const handleDeleteSession = async (presenceId) => {
+        if (!confirm('Hapus riwayat/rekaman sesi siswa ini dari pemantauan?')) return;
+
+        setPresenceList(prev => prev.filter(p => p.id !== presenceId));
+        try {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presenceId));
+        } catch (e) {}
+      };
+
+      // ACTION 7: Tambah Materi Baru
+      const handleAddMaterial = async (e) => {
+        e.preventDefault();
+        if (!matTitle.trim() || !matContent.trim()) return;
+
+        const matId = 'mat_' + Date.now();
+        const matObj = {
           id: matId,
-          title: matForm.title,
-          content: matForm.content,
-          durationMinutes: parseInt(matForm.durationMinutes) || 15,
-          source: matForm.source || '',
-          imageUrl: matForm.imageUrl || '',
-          kelas: filterKelas,
-          subKelasTarget: filterSubKelas,
+          title: matTitle.trim(),
+          kelas: matKelas,
+          subKelasTarget: matSubKelasTarget,
+          durationMinutes: parseInt(matDuration) || 15,
+          content: matContent.trim(),
+          imageUrl: matImage.trim(),
+          source: matSource.trim(),
+          createdBy: 'Guru Pengajar IPS',
           createdAt: Date.now()
         };
 
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'materials', matId), matData);
-        setMatForm({ id: '', title: '', content: '', durationMinutes: 15, source: '', imageUrl: '' });
-        setIsEditMat(false);
+        const updated = [matObj, ...materials];
+        setMaterials(updated);
+        localStorage.setItem('elearning_materials_v3', JSON.stringify(updated));
+
+        try {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'materials', matId), matObj);
+        } catch (e) {}
+
+        setMatTitle('');
+        setMatContent('');
+        setMatImage('');
+        setMatSource('');
+        alert('Materi IPS berhasil diterbitkan!');
       };
 
+      // ACTION 8: Hapus Materi
       const handleDeleteMaterial = async (id) => {
-        if (confirm("Hapus materi ini? Semua soal terkait juga akan terpengaruh.")) {
+        if (!confirm('Hapus materi pembelajaran ini? Soal terkait juga akan dibersihkan.')) return;
+
+        const updated = materials.filter(m => m.id !== id);
+        setMaterials(updated);
+        localStorage.setItem('elearning_materials_v3', JSON.stringify(updated));
+
+        try {
           await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'materials', id));
-        }
+        } catch (e) {}
       };
 
-      // === CRUD SOAL ===
-      const handleSaveQuestion = async (e) => {
+      // ACTION 9: Tambah Soal
+      const handleAddQuestion = async (e) => {
         e.preventDefault();
-        if (!questForm.materialId || !questForm.questionText) return;
+        if (!qText.trim() || !qMaterialId) return;
 
-        const qId = questForm.id || 'q_' + Date.now();
-        const qData = {
-          ...questForm,
+        const qId = 'q_' + Date.now();
+        const qObj = {
           id: qId,
+          materialId: qMaterialId,
+          type: qType,
+          questionText: qText.trim(),
+          optionA: qType === 'pg' ? qOptA.trim() : '',
+          optionB: qType === 'pg' ? qOptB.trim() : '',
+          optionC: qType === 'pg' ? qOptC.trim() : '',
+          optionD: qType === 'pg' ? qOptD.trim() : '',
+          correctAnswer: qType === 'pg' ? qCorrect : qCorrect.trim(),
           createdAt: Date.now()
         };
 
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'questions', qId), qData);
-        setQuestForm({ id: '', materialId: '', type: 'pg', questionText: '', optionA: '', optionB: '', optionC: '', optionD: '', correctAnswer: 'A' });
+        const updated = [qObj, ...questions];
+        setQuestions(updated);
+        localStorage.setItem('elearning_questions_v3', JSON.stringify(updated));
+
+        try {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'questions', qId), qObj);
+        } catch (e) {}
+
+        setQText('');
+        setQOptA('');
+        setQOptB('');
+        setQOptC('');
+        setQOptD('');
+        alert('Soal evaluasi berhasil ditambahkan!');
       };
 
+      // ACTION 10: Hapus Soal
       const handleDeleteQuestion = async (id) => {
-        if (confirm("Hapus soal ini?")) {
+        if (!confirm('Hapus soal evaluasi ini?')) return;
+        const updated = questions.filter(q => q.id !== id);
+        setQuestions(updated);
+        localStorage.setItem('elearning_questions_v3', JSON.stringify(updated));
+
+        try {
           await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'questions', id));
-        }
+        } catch (e) {}
       };
 
-      // Filter List Sesuai Pilihan Kelas & Rombel
-      const filteredStudents = studentsList.filter(s => 
-        (s.kelas === filterKelas || s.kelas === `Kelas ${filterKelas}`) && 
-        (s.subKelas === filterSubKelas || s.subKelas === `Rombel ${filterSubKelas}`) &&
-        s.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-
-      const filteredPresenceList = Object.values(presence).filter(p => 
-        p.kelas === `${filterKelas}${filterSubKelas}` &&
-        p.studentName.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-
-      const filteredMaterials = materials.filter(m => 
-        m.kelas === filterKelas && (m.subKelasTarget === 'semua' || m.subKelasTarget === filterSubKelas)
-      );
+      // Filter Data Monitoring Realtime
+      const filteredPresence = presenceList.filter(p => p.kelas === `${filterKelas}${filterSubKelas}`);
+      const filteredClassStudents = students.filter(s => s.kelas === filterKelas && s.subKelas === filterSubKelas);
 
       return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-          {/* Header Portal Guru */}
-          <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
+        <div className="min-h-screen bg-slate-950 text-slate-100 pb-12">
+          {/* Top Navbar */}
+          <nav className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
             <div className="max-w-7xl mx-auto px-4 py-3.5 flex flex-wrap justify-between items-center gap-4">
               <div className="flex items-center gap-3">
                 <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2.5 rounded-2xl shadow-lg shadow-blue-500/20">
-                  <BookOpen className="w-6 h-6 text-white" />
+                  <ShieldCheck className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-base font-extrabold text-white">Portal Guru - Dashboard Pengajar</h1>
-                  <p className="text-xs text-slate-400">E-Learning Mata Pelajaran IPS</p>
+                  <h1 className="text-base font-extrabold text-white tracking-tight">Portal Guru IPS</h1>
+                  <p className="text-[11px] text-slate-400">Pusat Kendali E-Learning Realtime</p>
                 </div>
               </div>
 
-              {/* Selector Kelas, Rombel & Tombol Hapus Kelas */}
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-xs">
-                  <span className="text-slate-400 font-medium">Kelas:</span>
-                  <select 
-                    value={filterKelas} 
-                    onChange={e => setFilterKelas(e.target.value)} 
-                    className="bg-transparent text-white font-bold outline-none cursor-pointer"
-                  >
-                    <option value="7" className="bg-slate-900">Kelas 7</option>
-                    <option value="8" className="bg-slate-900">Kelas 8</option>
-                    <option value="9" className="bg-slate-900">Kelas 9</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-xs">
-                  <span className="text-slate-400 font-medium">Rombel:</span>
-                  <select 
-                    value={filterSubKelas} 
-                    onChange={e => setFilterSubKelas(e.target.value)} 
-                    className="bg-transparent text-white font-bold outline-none cursor-pointer"
-                  >
-                    <option value="A" className="bg-slate-900">Rombel A</option>
-                    <option value="B" className="bg-slate-900">Rombel B</option>
-                    <option value="C" className="bg-slate-900">Rombel C</option>
-                    <option value="D" className="bg-slate-900">Rombel D</option>
-                  </select>
-                </div>
-
+              {/* Menu Navigasi Tab */}
+              <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-2xl border border-slate-800 text-xs">
                 <button 
-                  onClick={handleDeleteSelectedClass}
-                  className="bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 font-bold px-3 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5"
-                  title={`Hapus Seluruh Data Kelas ${filterKelas}${filterSubKelas}`}
+                  onClick={() => setActiveTab('monitoring')}
+                  className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'monitoring' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-white'}`}
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Hapus Kelas {filterKelas}{filterSubKelas}</span>
+                  <Users className="w-4 h-4" /> Monitoring Live Sesi
+                </button>
+                <button 
+                  onClick={() => setActiveTab('siswa')}
+                  className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'siswa' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-white'}`}
+                >
+                  <UserPlus className="w-4 h-4" /> Kelola Data Siswa
+                </button>
+                <button 
+                  onClick={() => setActiveTab('materi')}
+                  className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'materi' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-white'}`}
+                >
+                  <BookOpen className="w-4 h-4" /> Kelola Materi
+                </button>
+                <button 
+                  onClick={() => setActiveTab('soal')}
+                  className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'soal' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-white'}`}
+                >
+                  <HelpCircle className="w-4 h-4" /> Soal Evaluasi
+                </button>
+                <button 
+                  onClick={() => setActiveTab('nilai')}
+                  className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'nilai' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-white'}`}
+                >
+                  <Award className="w-4 h-4" /> Rekap Nilai
                 </button>
               </div>
             </div>
+          </nav>
 
-            {/* Sub-Navigasi Tab */}
-            <div className="max-w-7xl mx-auto px-4 flex gap-2 overflow-x-auto border-t border-slate-800/60 pt-2 pb-2">
-              <button 
-                onClick={() => setActiveTab('monitoring')} 
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'monitoring' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-              >
-                <Clock className="w-4 h-4"/> Monitoring Realtime Sesi
-              </button>
+          <main className="max-w-7xl mx-auto px-4 py-6">
 
-              <button 
-                onClick={() => setActiveTab('students')} 
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'students' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-              >
-                <Users className="w-4 h-4"/> Data Siswa ({filteredStudents.length})
-              </button>
-
-              <button 
-                onClick={() => setActiveTab('materials')} 
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'materials' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-              >
-                <BookOpen className="w-4 h-4"/> Kelola Materi IPS
-              </button>
-
-              <button 
-                onClick={() => setActiveTab('questions')} 
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'questions' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-              >
-                <HelpCircle className="w-4 h-4"/> Bank Soal & Evaluasi
-              </button>
-
-              <button 
-                onClick={() => setActiveTab('scores')} 
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'scores' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-              >
-                <Award className="w-4 h-4"/> Rekap Nilai Evaluasi
-              </button>
-            </div>
-          </header>
-
-          <main className="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
-            {/* TAB 1: MONITORING REALTIME SESI SISWA */}
+            {/* TAB 1: MONITORING LIVE SESI & KONTROL SESI SISWA */}
             {activeTab === 'monitoring' && (
-              <div className="space-y-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="space-y-6">
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl flex flex-wrap justify-between items-center gap-4">
                   <div>
-                    <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-blue-400 animate-pulse"/>
-                      Pantauan Kehadiran & Sesi Belajar Realtime
+                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                      <Users className="w-5 h-5 text-blue-400" /> Pemantauan Realtime Sesi Membaca Siswa
                     </h2>
-                    <p className="text-slate-400 text-xs mt-1">
-                      Menampilkan status siswa Kelas {filterKelas}{filterSubKelas} yang sedang membaca materi. Anda dapat menghentikan, mereset, atau menghapus sesi.
-                    </p>
+                    <p className="text-slate-400 text-xs mt-0.5">Pantau status membaca siswa, hentikan, reset, atau hapus sesi secara efisien.</p>
                   </div>
 
-                  <div className="relative w-full sm:w-64">
-                    <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
-                    <input 
-                      type="text" 
-                      placeholder="Cari Nama Siswa..." 
-                      value={searchTerm}
-                      onChange={e => setSearchTerm(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white outline-none focus:border-blue-500"
-                    />
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-xs">
+                      <span className="text-slate-400 font-semibold px-2">Kelas:</span>
+                      <select 
+                        value={filterKelas} 
+                        onChange={(e) => setFilterKelas(e.target.value)}
+                        className="bg-slate-900 border border-slate-800 text-white font-bold rounded-lg px-2.5 py-1 text-xs outline-none"
+                      >
+                        <option value="7">Kelas 7</option>
+                        <option value="8">Kelas 8</option>
+                        <option value="9">Kelas 9</option>
+                      </select>
+                      <select 
+                        value={filterSubKelas} 
+                        onChange={(e) => setFilterSubKelas(e.target.value)}
+                        className="bg-slate-900 border border-slate-800 text-white font-bold rounded-lg px-2.5 py-1 text-xs outline-none"
+                      >
+                        <option value="A">Rombel A</option>
+                        <option value="B">Rombel B</option>
+                        <option value="C">Rombel C</option>
+                        <option value="D">Rombel D</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                {/* Tabel Realtime Presence */}
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-semibold">
-                          <th className="p-4">Nama Siswa</th>
-                          <th className="p-4">Materi Dibaca</th>
-                          <th className="p-4">Sisa Waktu</th>
-                          <th className="p-4">Status Sesi</th>
-                          <th className="p-4 text-center">Aksi Sesi Siswa</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/60">
-                        {filteredPresenceList.map((p) => {
-                          const mins = Math.floor((p.remainingSeconds || 0) / 60);
-                          const secs = (p.remainingSeconds || 0) % 60;
-                          const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredPresence.map((p) => {
+                    const mins = Math.floor((p.remainingSeconds || 0) / 60);
+                    const secs = (p.remainingSeconds || 0) % 60;
+                    const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
-                          return (
-                            <tr key={p.id} className="hover:bg-slate-800/40 transition-all">
-                              <td className="p-4 font-bold text-white">{p.studentName}</td>
-                              <td className="p-4 text-slate-300">{p.materialTitle}</td>
-                              <td className="p-4 font-mono font-bold text-amber-400">{timeStr}</td>
-                              <td className="p-4">
-                                {p.status === 'active' && (
-                                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 w-max">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Membaca
-                                  </span>
-                                )}
-                                {p.status === 'warning' && (
-                                  <span className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 w-max">
-                                    <AlertTriangle className="w-3.5 h-3.5 text-yellow-400"/> Pindah Tab
-                                  </span>
-                                )}
-                                {p.status === 'completed' && (
-                                  <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 w-max">
-                                    <CheckCircle className="w-3.5 h-3.5 text-blue-400"/> Selesai Baca
-                                  </span>
-                                )}
-                                {p.status === 'stopped' && (
-                                  <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 w-max">
-                                    <Square className="w-3.5 h-3.5 text-rose-400"/> Dihentikan
-                                  </span>
-                                )}
-                              </td>
-                              <td className="p-4">
-                                <div className="flex items-center justify-center gap-2">
-                                  {/* Tombol Hentikan Sesi */}
-                                  <button 
-                                    onClick={() => handleStopSession(p.id)}
-                                    title="Hentikan Sesi Belajar Siswa"
-                                    className="p-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 rounded-lg border border-amber-500/20 transition-all"
-                                  >
-                                    <Square className="w-4 h-4"/>
-                                  </button>
+                    return (
+                      <div key={p.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 relative overflow-hidden">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-bold text-white text-sm">{p.studentName}</h3>
+                            <p className="text-[11px] text-slate-400">Materi: <span className="text-slate-200">{p.materialTitle}</span></p>
+                          </div>
+                          
+                          {p.status === 'active' && (
+                            <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-emerald-500/20 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Aktif
+                            </span>
+                          )}
+                          {p.status === 'warning' && (
+                            <span className="bg-yellow-500/10 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-yellow-500/20 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3 text-yellow-400" /> Pindah Tab
+                            </span>
+                          )}
+                          {p.status === 'stopped' && (
+                            <span className="bg-red-500/10 text-red-400 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-red-500/20 flex items-center gap-1">
+                              <StopCircle className="w-3 h-3 text-red-400" /> Dihentikan
+                            </span>
+                          )}
+                          {p.status === 'completed' && (
+                            <span className="bg-blue-500/10 text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-blue-500/20 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-blue-400" /> Selesai
+                            </span>
+                          )}
+                        </div>
 
-                                  {/* Tombol Reset Sesi */}
-                                  <button 
-                                    onClick={() => handleResetSession(p.id)}
-                                    title="Reset Waktu & Status Siswa"
-                                    className="p-1.5 bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white rounded-lg border border-blue-500/20 transition-all"
-                                  >
-                                    <RefreshCw className="w-4 h-4"/>
-                                  </button>
+                        <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center text-xs font-mono">
+                          <span className="text-slate-400 font-sans text-[11px]">Sisa Waktu:</span>
+                          <span className="font-bold text-amber-400">{formattedTime}</span>
+                        </div>
 
-                                  {/* Tombol Hapus Sesi */}
-                                  <button 
-                                    onClick={() => handleDeleteSession(p.id)}
-                                    title="Hapus Record Sesi Ini"
-                                    className="p-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg border border-rose-500/20 transition-all"
-                                  >
-                                    <Trash2 className="w-4 h-4"/>
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
+                        {/* TOMBOL AKSI: HENTIKAN, RESET, HAPUS SESI */}
+                        <div className="pt-2 border-t border-slate-800 flex items-center gap-2">
+                          <button 
+                            onClick={() => handleStopSession(p)}
+                            title="Hentikan Sesi Membaca Siswa Ini"
+                            className="flex-1 bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 py-1.5 rounded-xl text-[11px] font-bold transition-all flex justify-center items-center gap-1"
+                          >
+                            <StopCircle className="w-3.5 h-3.5" /> Hentikan Sesi
+                          </button>
 
-                        {filteredPresenceList.length === 0 && (
-                          <tr>
-                            <td colSpan="5" className="p-8 text-center text-slate-500 text-xs">
-                              Belum ada aktivitas sesi membaca siswa pada Kelas {filterKelas}{filterSubKelas}.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                          <button 
+                            onClick={() => handleResetSession(p)}
+                            title="Reset Peringatan / Aktifkan Kembali Sesi"
+                            className="flex-1 bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 py-1.5 rounded-xl text-[11px] font-bold transition-all flex justify-center items-center gap-1"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" /> Reset Sesi
+                          </button>
+
+                          <button 
+                            onClick={() => handleDeleteSession(p.id)}
+                            title="Hapus Rekaman Sesi Ini"
+                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-red-400 rounded-xl transition-all"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {filteredPresence.length === 0 && (
+                    <div className="col-span-full bg-slate-900/50 border border-dashed border-slate-800 rounded-3xl p-12 text-center text-slate-500">
+                      <Users className="w-10 h-10 mx-auto text-slate-600 mb-2" />
+                      <p className="font-semibold text-xs">Belum ada aktivitas membaca aktif untuk Kelas {filterKelas}{filterSubKelas}.</p>
+                      <p className="text-[11px] text-slate-600 mt-1">Sesi siswa akan otomatis muncul di sini ketika siswa membuka materi IPS.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* TAB 2: DATA SISWA PER KELAS */}
-            {activeTab === 'students' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Form Tambah Siswa */}
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4 h-fit">
-                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                    <Users className="w-5 h-5 text-blue-400" /> Tambah Siswa Baru
-                  </h3>
-                  <p className="text-slate-400 text-xs">
-                    Siswa yang ditambahkan akan otomatis muncul di menu drop-down Portal Siswa pada Kelas {filterKelas}{filterSubKelas}.
-                  </p>
+            {/* TAB 2: KELOLA DATA SISWA & HAPUS KELAS TERPILIH */}
+            {activeTab === 'siswa' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Form Tambah Siswa */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 h-fit">
+                    <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                      <UserPlus className="w-4 h-4 text-blue-400" /> Tambah Data Siswa Baru
+                    </h2>
 
-                  <form onSubmit={handleAddStudent} className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Nama Lengkap Siswa</label>
-                      <input 
-                        type="text" 
-                        required 
-                        placeholder="Contoh: Ahmad Rizky" 
-                        value={newStudentName}
-                        onChange={e => setNewStudentName(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-blue-500"
-                      />
-                    </div>
+                    <form onSubmit={handleAddStudent} className="space-y-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-400 mb-1">Nama Lengkap Siswa</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={newStudentName}
+                          onChange={(e) => setNewStudentName(e.target.value)}
+                          placeholder="Contoh: Ahmad Subagja" 
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-blue-500"
+                        />
+                      </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">NISN (Opsional)</label>
-                      <input 
-                        type="text" 
-                        placeholder="Contoh: 0081234567" 
-                        value={newStudentNISN}
-                        onChange={e => setNewStudentNISN(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-blue-500"
-                      />
-                    </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-400 mb-1">NISN (Opsional)</label>
+                        <input 
+                          type="text" 
+                          value={newStudentNISN}
+                          onChange={(e) => setNewStudentNISN(e.target.value)}
+                          placeholder="0081234567" 
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-blue-500"
+                        />
+                      </div>
 
-                    <button 
-                      type="submit" 
-                      className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/30 text-xs flex justify-center items-center gap-2"
-                    >
-                      <Plus className="w-4 h-4"/> Tambahkan ke Kelas {filterKelas}{filterSubKelas}
-                    </button>
-                  </form>
-                </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-400 mb-1">Tingkat Kelas</label>
+                          <select 
+                            value={newStudentKelas}
+                            onChange={(e) => setNewStudentKelas(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none"
+                          >
+                            <option value="7">Kelas 7</option>
+                            <option value="8">Kelas 8</option>
+                            <option value="9">Kelas 9</option>
+                          </select>
+                        </div>
 
-                {/* Tabel Daftar Siswa */}
-                <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl p-6 space-y-4">
-                  <div className="flex justify-between items-center gap-4">
-                    <h3 className="text-base font-extrabold text-white">
-                      Daftar Siswa Kelas {filterKelas}{filterSubKelas}
-                    </h3>
-                    <div className="relative w-48">
-                      <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
-                      <input 
-                        type="text" 
-                        placeholder="Cari nama..." 
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white outline-none focus:border-blue-500"
-                      />
-                    </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-400 mb-1">Rombel</label>
+                          <select 
+                            value={newStudentSubKelas}
+                            onChange={(e) => setNewStudentSubKelas(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none"
+                          >
+                            <option value="A">Rombel A</option>
+                            <option value="B">Rombel B</option>
+                            <option value="C">Rombel C</option>
+                            <option value="D">Rombel D</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <button 
+                        type="submit" 
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md shadow-blue-600/20 flex justify-center items-center gap-2 active:scale-95"
+                      >
+                        <Plus className="w-4 h-4" /> Simpan Data Siswa
+                      </button>
+                    </form>
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-semibold">
-                          <th className="p-3">No</th>
-                          <th className="p-3">Nama Siswa</th>
-                          <th className="p-3">NISN</th>
-                          <th className="p-3 text-center">Hapus</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/60">
-                        {filteredStudents.map((s, idx) => (
-                          <tr key={s.id} className="hover:bg-slate-800/40 transition-all">
-                            <td className="p-3 text-slate-500 font-mono">{idx + 1}</td>
-                            <td className="p-3 font-bold text-white">{s.name}</td>
-                            <td className="p-3 text-slate-400 font-mono">{s.nisn || '-'}</td>
-                            <td className="p-3 text-center">
-                              <button 
-                                onClick={() => handleDeleteStudent(s.id)}
-                                className="p-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg border border-rose-500/20 transition-all"
-                                title="Hapus Siswa"
-                              >
-                                <UserX className="w-3.5 h-3.5"/>
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                  {/* Tabel Daftar Siswa & Fitur Hapus Kelas Terpilih */}
+                  <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4">
+                    <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-800 pb-4">
+                      <div>
+                        <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-emerald-400" /> Daftar Siswa Terdaftar
+                        </h2>
+                        <p className="text-[11px] text-slate-400">Total {filteredClassStudents.length} siswa di Kelas {filterKelas}{filterSubKelas}</p>
+                      </div>
 
-                        {filteredStudents.length === 0 && (
-                          <tr>
-                            <td colSpan="4" className="p-8 text-center text-slate-500 text-xs">
-                              Belum ada siswa terdaftar di Kelas {filterKelas}{filterSubKelas}. Tambahkan siswa melalui form di samping.
-                            </td>
+                      <div className="flex items-center gap-2">
+                        <select 
+                          value={filterKelas} 
+                          onChange={(e) => setFilterKelas(e.target.value)}
+                          className="bg-slate-950 border border-slate-800 text-white font-bold rounded-xl px-2.5 py-1.5 text-xs outline-none"
+                        >
+                          <option value="7">Kelas 7</option>
+                          <option value="8">Kelas 8</option>
+                          <option value="9">Kelas 9</option>
+                        </select>
+                        <select 
+                          value={filterSubKelas} 
+                          onChange={(e) => setFilterSubKelas(e.target.value)}
+                          className="bg-slate-950 border border-slate-800 text-white font-bold rounded-xl px-2.5 py-1.5 text-xs outline-none"
+                        >
+                          <option value="A">Rombel A</option>
+                          <option value="B">Rombel B</option>
+                          <option value="C">Rombel C</option>
+                          <option value="D">Rombel D</option>
+                        </select>
+
+                        {/* TOMBOL HAPUS KELAS YANG DIPILIH */}
+                        <button 
+                          onClick={handleDeleteSelectedClass}
+                          title="Hapus Seluruh Data Siswa di Kelas Terpilih Ini"
+                          className="bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Hapus Kelas Ini
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-800 text-slate-400">
+                            <th className="py-2.5 px-3">No</th>
+                            <th className="py-2.5 px-3">Nama Siswa</th>
+                            <th className="py-2.5 px-3">NISN</th>
+                            <th className="py-2.5 px-3">Kelas</th>
+                            <th className="py-2.5 px-3 text-right">Aksi</th>
                           </tr>
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/50 text-slate-300">
+                          {filteredClassStudents.map((s, idx) => (
+                            <tr key={s.id} className="hover:bg-slate-800/40 transition-colors">
+                              <td className="py-2.5 px-3 font-mono">{idx + 1}</td>
+                              <td className="py-2.5 px-3 font-semibold text-white">{s.name}</td>
+                              <td className="py-2.5 px-3 font-mono text-slate-400">{s.nisn || '-'}</td>
+                              <td className="py-2.5 px-3">
+                                <span className="bg-slate-800 px-2 py-0.5 rounded text-[10px] font-bold text-slate-300">
+                                  Kelas {s.kelas}{s.subKelas}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                <button 
+                                  onClick={() => handleDeleteStudent(s.id)}
+                                  className="p-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg transition-all"
+                                  title="Hapus Siswa"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+
+                          {filteredClassStudents.length === 0 && (
+                            <tr>
+                              <td colSpan="5" className="py-8 text-center text-slate-500 italic">
+                                Belum ada siswa yang ditambahkan untuk Kelas {filterKelas}{filterSubKelas}.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
             {/* TAB 3: KELOLA MATERI IPS */}
-            {activeTab === 'materials' && (
+            {activeTab === 'materi' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Form Buat / Edit Materi */}
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4 h-fit">
-                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-blue-400" /> {isEditMat ? 'Edit Materi IPS' : 'Terbitkan Materi IPS'}
-                  </h3>
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 h-fit">
+                  <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-blue-400" /> Terbitkan Materi Baru
+                  </h2>
 
-                  <form onSubmit={handleSaveMaterial} className="space-y-3">
+                  <form onSubmit={handleAddMaterial} className="space-y-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Judul Materi</label>
+                      <label className="block text-[11px] font-semibold text-slate-400 mb-1">Judul Materi Pembelajaran</label>
                       <input 
                         type="text" 
-                        required 
-                        placeholder="Contoh: Interaksi Sosial dan Dinamika Masyarakat" 
-                        value={matForm.title}
-                        onChange={e => setMatForm({ ...matForm, title: e.target.value })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                        required
+                        value={matTitle}
+                        onChange={(e) => setMatTitle(e.target.value)}
+                        placeholder="Contoh: Interaksi Sosial & Dinamika Masyarakat" 
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-blue-500"
                       />
                     </div>
 
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-400 mb-1">Tingkat Kelas</label>
+                        <select 
+                          value={matKelas}
+                          onChange={(e) => setMatKelas(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none"
+                        >
+                          <option value="7">Kelas 7</option>
+                          <option value="8">Kelas 8</option>
+                          <option value="9">Kelas 9</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-400 mb-1">Target Rombel</label>
+                        <select 
+                          value={matSubKelasTarget}
+                          onChange={(e) => setMatSubKelasTarget(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none"
+                        >
+                          <option value="semua">Semua Rombel</option>
+                          <option value="A">Rombel A</option>
+                          <option value="B">Rombel B</option>
+                          <option value="C">Rombel C</option>
+                          <option value="D">Rombel D</option>
+                        </select>
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Durasi Membaca (Menit)</label>
+                      <label className="block text-[11px] font-semibold text-slate-400 mb-1">Durasi Membaca (Menit)</label>
                       <input 
                         type="number" 
-                        min="1" 
-                        required 
-                        value={matForm.durationMinutes}
-                        onChange={e => setMatForm({ ...matForm, durationMinutes: e.target.value })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                        required
+                        value={matDuration}
+                        onChange={(e) => setMatDuration(e.target.value)}
+                        placeholder="15" 
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-blue-500 font-mono"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">URL Gambar Header (Opsional)</label>
+                      <label className="block text-[11px] font-semibold text-slate-400 mb-1">URL Gambar Header (Opsional)</label>
                       <input 
                         type="url" 
-                        placeholder="https://images.unsplash.com/..." 
-                        value={matForm.imageUrl}
-                        onChange={e => setMatForm({ ...matForm, imageUrl: e.target.value })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                        value={matImage}
+                        onChange={(e) => setMatImage(e.target.value)}
+                        placeholder="https://..." 
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-blue-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Isi Pembelajaran Materi</label>
+                      <label className="block text-[11px] font-semibold text-slate-400 mb-1">Isi Teks Materi Pembelajaran</label>
                       <textarea 
-                        rows="6" 
-                        required 
-                        placeholder="Tuliskan teks materi bacaan di sini..." 
-                        value={matForm.content}
-                        onChange={e => setMatForm({ ...matForm, content: e.target.value })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white outline-none focus:border-blue-500"
+                        required
+                        rows="6"
+                        value={matContent}
+                        onChange={(e) => setMatContent(e.target.value)}
+                        placeholder="Ketikkan ringkasan modul atau materi IPS di sini..." 
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-blue-500 leading-relaxed"
                       ></textarea>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Sumber Referensi / Buku</label>
+                      <label className="block text-[11px] font-semibold text-slate-400 mb-1">Sumber Referensi (Opsional)</label>
                       <input 
                         type="text" 
-                        placeholder="Buku Paket IPS SMP Kelas 7 Kemendikbud" 
-                        value={matForm.source}
-                        onChange={e => setMatForm({ ...matForm, source: e.target.value })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                        value={matSource}
+                        onChange={(e) => setMatSource(e.target.value)}
+                        placeholder="Buku Paket IPS Kemendikbud 2024" 
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-blue-500"
                       />
                     </div>
 
-                    <div className="flex gap-2 pt-2">
-                      <button 
-                        type="submit" 
-                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/30 text-xs flex justify-center items-center gap-2"
-                      >
-                        {isEditMat ? 'Update Materi' : 'Terbitkan Materi'}
-                      </button>
-
-                      {isEditMat && (
-                        <button 
-                          type="button" 
-                          onClick={() => { setIsEditMat(false); setMatForm({ id: '', title: '', content: '', durationMinutes: 15, source: '', imageUrl: '' }); }}
-                          className="px-4 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold"
-                        >
-                          Batal
-                        </button>
-                      )}
-                    </div>
+                    <button 
+                      type="submit" 
+                      className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md shadow-blue-600/20 flex justify-center items-center gap-2 active:scale-95"
+                    >
+                      <Plus className="w-4 h-4" /> Publish Materi IPS
+                    </button>
                   </form>
                 </div>
 
-                {/* List Materi Terbit */}
                 <div className="lg:col-span-2 space-y-4">
-                  <h3 className="text-base font-extrabold text-white">Materi Diterbitkan untuk Kelas {filterKelas}</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredMaterials.map((m) => (
-                      <div key={m.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-3 relative overflow-hidden shadow-lg">
-                        <div>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-bold px-2 py-0.5 rounded-lg">
-                              Kelas {m.kelas}
-                            </span>
-                            <span className="text-amber-400 font-mono text-[11px] flex items-center gap-1">
-                              <Clock className="w-3 h-3"/> {m.durationMinutes} Menit
-                            </span>
-                          </div>
-                          <h4 className="font-bold text-white text-sm line-clamp-1">{m.title}</h4>
-                          <p className="text-slate-400 text-xs line-clamp-3 mt-1">{m.content}</p>
-                        </div>
+                  <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-emerald-400" /> Daftar Materi IPS Yang Telah Diterbitkan
+                  </h2>
 
-                        <div className="flex justify-end items-center gap-2 pt-2 border-t border-slate-800/80">
-                          <button 
-                            onClick={() => { setMatForm(m); setIsEditMat(true); }}
-                            className="p-1.5 bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white rounded-lg border border-blue-500/20 transition-all text-xs flex items-center gap-1"
-                          >
-                            <Edit3 className="w-3.5 h-3.5"/> Edit
-                          </button>
+                  <div className="grid grid-cols-1 gap-4">
+                    {materials.map((m) => (
+                      <div key={m.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-3 relative">
+                        <div className="flex justify-between items-start gap-3">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="bg-blue-500/10 text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-500/20">
+                                Kelas {m.kelas} ({m.subKelasTarget === 'semua' ? 'Semua Rombel' : `Rombel ${m.subKelasTarget}`})
+                              </span>
+                              <span className="text-[11px] font-mono text-amber-400">{m.durationMinutes || 15} Menit Reading</span>
+                            </div>
+                            <h3 className="font-bold text-white text-base">{m.title}</h3>
+                          </div>
+
                           <button 
                             onClick={() => handleDeleteMaterial(m.id)}
-                            className="p-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg border border-rose-500/20 transition-all text-xs flex items-center gap-1"
+                            className="p-2 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-xl transition-all"
+                            title="Hapus Materi"
                           >
-                            <Trash2 className="w-3.5 h-3.5"/> Hapus
+                            <Trash2 className="w-4 h-4" />
                           </button>
+                        </div>
+
+                        <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{m.content}</p>
+
+                        <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-[11px] text-slate-500">
+                          <span>Sumber: {m.source || 'Modul Guru'}</span>
+                          <span>Soal Dibuat: {questions.filter(q => q.materialId === m.id).length} Butir</span>
                         </div>
                       </div>
                     ))}
 
-                    {filteredMaterials.length === 0 && (
-                      <div className="col-span-full bg-slate-900 border border-dashed border-slate-800 rounded-3xl p-8 text-center text-slate-500 text-xs">
-                        Belum ada materi IPS yang diterbitkan untuk Kelas {filterKelas}.
+                    {materials.length === 0 && (
+                      <div className="bg-slate-900/50 border border-dashed border-slate-800 rounded-3xl p-12 text-center text-slate-500 italic">
+                        Belum ada materi IPS yang diterbitkan. Silakan isi form di samping untuk menerbitkan materi.
                       </div>
                     )}
                   </div>
@@ -780,119 +910,133 @@
               </div>
             )}
 
-            {/* TAB 4: BANK SOAL EVALUASI */}
-            {activeTab === 'questions' && (
+            {/* TAB 4: KELOLA SOAL EVALUASI */}
+            {activeTab === 'soal' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Form Buat Soal */}
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4 h-fit">
-                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                    <HelpCircle className="w-5 h-5 text-blue-400" /> Tambah Soal Evaluasi
-                  </h3>
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 h-fit">
+                  <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-blue-400" /> Buat Soal Evaluasi Baru
+                  </h2>
 
-                  <form onSubmit={handleSaveQuestion} className="space-y-3">
+                  <form onSubmit={handleAddQuestion} className="space-y-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Pilih Materi Pembelajaran</label>
+                      <label className="block text-[11px] font-semibold text-slate-400 mb-1">Pilih Materi Pembelajaran</label>
                       <select 
-                        value={questForm.materialId}
-                        onChange={e => setQuestForm({ ...questForm, materialId: e.target.value })}
+                        value={qMaterialId} 
+                        onChange={(e) => setQMaterialId(e.target.value)}
                         required
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-blue-500"
                       >
-                        <option value="">-- Pilih Materi IPS --</option>
-                        {filteredMaterials.map(m => (
-                          <option key={m.id} value={m.id}>{m.title}</option>
+                        {materials.map(m => (
+                          <option key={m.id} value={m.id}>[Kelas {m.kelas}] {m.title}</option>
                         ))}
                       </select>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Pertanyaan / Pertanyaan Kuis</label>
-                      <textarea 
-                        rows="3" 
-                        required 
-                        placeholder="Tuliskan pertanyaan..." 
-                        value={questForm.questionText}
-                        onChange={e => setQuestForm({ ...questForm, questionText: e.target.value })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white outline-none focus:border-blue-500"
-                      ></textarea>
-                    </div>
-
-                    <div className="space-y-2 border-t border-b border-slate-800 py-3">
-                      <p className="text-[11px] font-bold text-slate-400">Pilihan Jawaban (Ganda):</p>
-                      {['A', 'B', 'C', 'D'].map(key => (
-                        <div key={key} className="flex items-center gap-2">
-                          <span className="font-bold text-xs text-slate-400 w-4">{key}.</span>
-                          <input 
-                            type="text" 
-                            required
-                            placeholder={`Pilihan ${key}`}
-                            value={questForm[`option${key}`]}
-                            onChange={e => setQuestForm({ ...questForm, [`option${key}`]: e.target.value })}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-blue-500"
-                          />
-                        </div>
-                      ))}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Kunci Jawaban Benar</label>
+                      <label className="block text-[11px] font-semibold text-slate-400 mb-1">Tipe Soal</label>
                       <select 
-                        value={questForm.correctAnswer}
-                        onChange={e => setQuestForm({ ...questForm, correctAnswer: e.target.value })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                        value={qType} 
+                        onChange={(e) => setQType(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none"
                       >
-                        <option value="A">Pilihan A</option>
-                        <option value="B">Pilihan B</option>
-                        <option value="C">Pilihan C</option>
-                        <option value="D">Pilihan D</option>
+                        <option value="pg">Pilihan Ganda (PG)</option>
+                        <option value="essay">Isian Singkat / Essay</option>
                       </select>
                     </div>
 
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-400 mb-1">Pertanyaan Soal</label>
+                      <textarea 
+                        required
+                        rows="3"
+                        value={qText}
+                        onChange={(e) => setQText(e.target.value)}
+                        placeholder="Tuliskan pertanyaan evaluasi IPS..." 
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-blue-500"
+                      ></textarea>
+                    </div>
+
+                    {qType === 'pg' ? (
+                      <div className="space-y-2 pt-1">
+                        <div>
+                          <label className="block text-[10px] text-slate-400">Pilihan A</label>
+                          <input type="text" required value={qOptA} onChange={(e) => setQOptA(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400">Pilihan B</label>
+                          <input type="text" required value={qOptB} onChange={(e) => setQOptB(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400">Pilihan C</label>
+                          <input type="text" value={qOptC} onChange={(e) => setQOptC(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400">Pilihan D</label>
+                          <input type="text" value={qOptD} onChange={(e) => setQOptD(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white" />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-400 mb-1">Kunci Jawaban Benar</label>
+                          <select value={qCorrect} onChange={(e) => setQCorrect(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-bold">
+                            <option value="A">Opsi A</option>
+                            <option value="B">Opsi B</option>
+                            <option value="C">Opsi C</option>
+                            <option value="D">Opsi D</option>
+                          </select>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-400 mb-1">Kunci Jawaban Teks (Exact Match)</label>
+                        <input type="text" required value={qCorrect} onChange={(e) => setQCorrect(e.target.value)} placeholder="Kata kunci jawaban benar..." className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white outline-none" />
+                      </div>
+                    )}
+
                     <button 
                       type="submit" 
-                      className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/30 text-xs flex justify-center items-center gap-2"
+                      className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md shadow-blue-600/20 flex justify-center items-center gap-2 active:scale-95"
                     >
-                      <Plus className="w-4 h-4"/> Simpan Soal Kuis
+                      <Plus className="w-4 h-4" /> Simpan Soal Evaluasi
                     </button>
                   </form>
                 </div>
 
-                {/* List Bank Soal */}
                 <div className="lg:col-span-2 space-y-4">
-                  <h3 className="text-base font-extrabold text-white">Daftar Soal Evaluasi</h3>
+                  <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-emerald-400" /> Bank Soal Evaluasi Pembelajaran
+                  </h2>
+
                   <div className="space-y-3">
                     {questions.map((q, idx) => {
-                      const parentMat = materials.find(m => m.id === q.materialId);
+                      const mat = materials.find(m => m.id === q.materialId);
                       return (
-                        <div key={q.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 shadow-lg">
-                          <div className="flex justify-between items-start gap-4">
-                            <div>
-                              <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded font-semibold">
-                                {parentMat ? parentMat.title : 'Materi Terhapus'}
-                              </span>
-                              <h4 className="font-bold text-white text-xs mt-2">{idx + 1}. {q.questionText}</h4>
-                            </div>
-                            <button 
-                              onClick={() => handleDeleteQuestion(q.id)}
-                              className="p-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg border border-rose-500/20 transition-all"
-                            >
-                              <Trash2 className="w-3.5 h-3.5"/>
+                        <div key={q.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2 relative">
+                          <div className="flex justify-between items-start">
+                            <span className="text-[10px] font-bold bg-slate-800 text-blue-400 px-2 py-0.5 rounded">
+                              Materi: {mat ? mat.title : 'Umum'}
+                            </span>
+                            <button onClick={() => handleDeleteQuestion(q.id)} className="text-slate-500 hover:text-red-400 p-1">
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            {['A', 'B', 'C', 'D'].map(k => (
-                              <div key={k} className={`p-2 rounded-xl border ${q.correctAnswer === k ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
-                                {k}. {q[`option${k}`]}
-                              </div>
-                            ))}
-                          </div>
+                          <p className="font-semibold text-xs text-white">{idx + 1}. {q.questionText}</p>
+
+                          {q.type === 'pg' && (
+                            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400 pt-1">
+                              <div className={q.correctAnswer === 'A' ? 'text-emerald-400 font-bold' : ''}>A. {q.optionA}</div>
+                              <div className={q.correctAnswer === 'B' ? 'text-emerald-400 font-bold' : ''}>B. {q.optionB}</div>
+                              {q.optionC && <div className={q.correctAnswer === 'C' ? 'text-emerald-400 font-bold' : ''}>C. {q.optionC}</div>}
+                              {q.optionD && <div className={q.correctAnswer === 'D' ? 'text-emerald-400 font-bold' : ''}>D. {q.optionD}</div>}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
 
                     {questions.length === 0 && (
-                      <div className="bg-slate-900 border border-dashed border-slate-800 rounded-3xl p-8 text-center text-slate-500 text-xs">
+                      <div className="bg-slate-900/50 border border-dashed border-slate-800 rounded-3xl p-12 text-center text-slate-500 italic">
                         Belum ada soal evaluasi yang dibuat.
                       </div>
                     )}
@@ -901,37 +1045,50 @@
               </div>
             )}
 
-            {/* TAB 5: REKAP NILAI EVALUASI */}
-            {activeTab === 'scores' && (
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl p-6 space-y-4">
-                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                  <Award className="w-5 h-5 text-amber-400" /> Rekapitulasi Nilai Evaluasi Siswa Kelas {filterKelas}{filterSubKelas}
-                </h3>
+            {/* TAB 5: REKAP NILAI SISWA */}
+            {activeTab === 'nilai' && (
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+                  <div>
+                    <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Award className="w-4 h-4 text-emerald-400" /> Rekapitulasi Hasil Evaluasi Siswa
+                    </h2>
+                    <p className="text-[11px] text-slate-400">Nilai otomatis terekam secara realtime saat siswa menyelesaikan latihan.</p>
+                  </div>
+                </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
+                  <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-semibold">
-                        <th className="p-3">Nama Siswa</th>
-                        <th className="p-3">Materi Evaluasi</th>
-                        <th className="p-3">Nilai Selesai</th>
-                        <th className="p-3">Waktu Selesai</th>
+                      <tr className="border-b border-slate-800 text-slate-400">
+                        <th className="py-2.5 px-3">No</th>
+                        <th className="py-2.5 px-3">Nama Siswa</th>
+                        <th className="py-2.5 px-3">Kelas</th>
+                        <th className="py-2.5 px-3">Materi Evaluasi</th>
+                        <th className="py-2.5 px-3 text-right">Nilai Akhir</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
-                      {scores.filter(sc => sc.kelas === filterKelas && sc.subKelas === filterSubKelas).map((sc) => (
-                        <tr key={sc.id} className="hover:bg-slate-800/40 transition-all">
-                          <td className="p-3 font-bold text-white">{sc.studentName}</td>
-                          <td className="p-3 text-slate-300">{sc.materialTitle}</td>
-                          <td className="p-3 font-mono font-extrabold text-emerald-400 text-sm">{sc.score} / 100</td>
-                          <td className="p-3 text-slate-500">{new Date(sc.createdAt).toLocaleString('id-ID')}</td>
+                    <tbody className="divide-y divide-slate-800/50 text-slate-300">
+                      {scores.map((sc, idx) => (
+                        <tr key={sc.id || idx} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="py-2.5 px-3 font-mono">{idx + 1}</td>
+                          <td className="py-2.5 px-3 font-semibold text-white">{sc.studentName}</td>
+                          <td className="py-2.5 px-3">
+                            <span className="bg-slate-800 px-2 py-0.5 rounded text-[10px] font-bold text-slate-300">
+                              Kelas {sc.kelas}{sc.subKelas}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-300">{sc.materialTitle}</td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-400 text-sm">
+                            {sc.score} / 100
+                          </td>
                         </tr>
                       ))}
 
-                      {scores.filter(sc => sc.kelas === filterKelas && sc.subKelas === filterSubKelas).length === 0 && (
+                      {scores.length === 0 && (
                         <tr>
-                          <td colSpan="4" className="p-8 text-center text-slate-500 text-xs">
-                            Belum ada rekap nilai kuis untuk Kelas {filterKelas}{filterSubKelas}.
+                          <td colSpan="5" className="py-8 text-center text-slate-500 italic">
+                            Belum ada rekap nilai evaluasi siswa.
                           </td>
                         </tr>
                       )}
@@ -940,6 +1097,7 @@
                 </div>
               </div>
             )}
+
           </main>
         </div>
       );

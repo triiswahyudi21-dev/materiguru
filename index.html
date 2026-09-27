@@ -140,6 +140,11 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
       }
     ];
 
+    const defaultQuestions = [
+      { id: 'q1', materialId: 'm1', type: 'pg', questionText: 'Makanan, pakaian, dan tempat tinggal termasuk dalam jenis kebutuhan...', optionA: 'Primer', optionB: 'Sekunder', optionC: 'Tersier', optionD: 'Jasmani', correctAnswer: 'A' },
+      { id: 'q2', materialId: 'm1', type: 'isian', questionText: 'Kondisi dimana alat pemuas kebutuhan jumlahnya terbatas sedangkan kebutuhan tidak terbatas disebut...', correctAnswer: 'kelangkaan' }
+    ];
+
     const defaultStudents = [
       { id: 's1', name: 'Ahmad Rizky Pratama', kelas: '7', subKelas: 'A' },
       { id: 's2', name: 'Anisa Rahmawati', kelas: '7', subKelas: 'A' },
@@ -169,10 +174,7 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
 
       const [questions, setQuestions] = useState(() => {
         const local = localStorage.getItem('elearning_questions_v3');
-        return local ? JSON.parse(local) : [
-          { id: 'q1', materialId: 'm1', type: 'pg', questionText: 'Makanan, pakaian, dan tempat tinggal termasuk dalam jenis kebutuhan...', optionA: 'Primer', optionB: 'Sekunder', optionC: 'Tersier', optionD: 'Jasmani', correctAnswer: 'A' },
-          { id: 'q2', materialId: 'm1', type: 'isian', questionText: 'Kondisi dimana alat pemuas kebutuhan jumlahnya terbatas sedangkan kebutuhan tidak terbatas disebut...', correctAnswer: 'kelangkaan' }
-        ];
+        return local ? JSON.parse(local) : defaultQuestions;
       });
 
       const [students, setStudents] = useState(() => {
@@ -243,8 +245,41 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
         };
         initAuth();
 
-        // 1. Listener Firestore untuk presensi siswa secara realtime
+        // Push default/local questions to Cloud Firestore immediately to guarantee student visibility
+        const uploadInitialQuestions = async () => {
+          try {
+            for (const q of questions) {
+              const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'questions', q.id);
+              await setDoc(docRef, q);
+            }
+            for (const m of materials) {
+              const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'materials', m.id);
+              await setDoc(docRef, m);
+            }
+          } catch (e) {
+            console.log("Offline mode active for initial sync");
+          }
+        };
+        uploadInitialQuestions();
+
+        // Listener Realtime Cloud Firestore untuk Materi (Sinkron dengan Portal Siswa)
         try {
+          const materialsCol = collection(db, 'artifacts', appId, 'public', 'data', 'materials');
+          const unsubMat = onSnapshot(materialsCol, (snapshot) => {
+            const remoteMat = [];
+            snapshot.docs.forEach(doc => remoteMat.push(doc.data()));
+            if (remoteMat.length > 0) setMaterials(remoteMat);
+          }, (err) => console.log("Offline mode active (materials)"));
+
+          // Listener Realtime Cloud Firestore untuk Soal (Sinkron dengan Portal Siswa)
+          const questionsCol = collection(db, 'artifacts', appId, 'public', 'data', 'questions');
+          const unsubQ = onSnapshot(questionsCol, (snapshot) => {
+            const remoteQ = [];
+            snapshot.docs.forEach(doc => remoteQ.push(doc.data()));
+            if (remoteQ.length > 0) setQuestions(remoteQ);
+          }, (err) => console.log("Offline mode active (questions)"));
+
+          // Listener Firestore untuk presensi siswa secara realtime
           const presenceCol = collection(db, 'artifacts', appId, 'public', 'data', 'student_presence');
           const unsubPresence = onSnapshot(presenceCol, (snapshot) => {
             const remotePresences = {};
@@ -254,9 +289,9 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
             if (Object.keys(remotePresences).length > 0) {
               setLiveMonitorData(prev => ({ ...prev, ...remotePresences }));
             }
-          }, (err) => console.log("Offline mode active"));
+          }, (err) => console.log("Offline mode active (presence)"));
 
-          // 2. Listener Firestore untuk Data Siswa Realtime
+          // Listener Firestore untuk Data Siswa Realtime
           const studentsCol = collection(db, 'artifacts', appId, 'public', 'data', 'students');
           const unsubStudents = onSnapshot(studentsCol, (snapshot) => {
             const remoteStudents = [];
@@ -269,11 +304,26 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
           }, (err) => console.log("Gagal membaca siswa dari cloud"));
 
           return () => {
+            unsubMat();
+            unsubQ();
             unsubPresence();
             unsubStudents();
           };
         } catch (err) {}
       }, []);
+
+      // Synchronize current material's questions to Cloud when entering Manage Questions view
+      const syncQuestionsToCloud = async (matId) => {
+        const targetQuestions = questions.filter(q => q.materialId === matId);
+        try {
+          for (const q of targetQuestions) {
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'questions', q.id);
+            await setDoc(docRef, q);
+          }
+        } catch (e) {
+          console.log("Gagal sinkronisasi otomatis soal ke cloud");
+        }
+      };
 
       // BroadcastChannel Listener untuk update dari Tab Siswa
       useEffect(() => {
@@ -285,10 +335,18 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
               ...prev,
               [payload.id]: payload
             }));
+          } else if (type === 'NEW_MATERIAL_PUBLISHED') {
+            setMaterials(prev => [payload, ...prev.filter(m => m.id !== payload.id)]);
+          } else if (type === 'NEW_QUESTION_ADDED') {
+            setQuestions(prev => [...prev.filter(q => q.id !== payload.id), payload]);
           }
         };
 
         const handleStorageChange = () => {
+          const mat = localStorage.getItem('elearning_materials_v3');
+          if (mat) setMaterials(JSON.parse(mat));
+          const qst = localStorage.getItem('elearning_questions_v3');
+          if (qst) setQuestions(JSON.parse(qst));
           const sc = localStorage.getItem('elearning_scores_v3');
           if (sc) setScores(JSON.parse(sc));
           const lm = localStorage.getItem('elearning_live_monitor');
@@ -328,8 +386,8 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
         setSelectedMaterial(null);
       };
 
-      // Terbitkan Materi Baru
-      const handleCreateMaterial = (e) => {
+      // Terbitkan Materi Baru (Langsung Sinkron ke Portal Siswa)
+      const handleCreateMaterial = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
 
@@ -362,20 +420,47 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
         };
 
         setMaterials(prev => [newMat, ...prev]);
-        showNotification(`Materi "${title}" berhasil diterbitkan untuk Kelas ${kelas}!`);
+
+        // Broadcast Sync ke tab siswa lokal
+        if (broadcast) {
+          broadcast.postMessage({ type: 'NEW_MATERIAL_PUBLISHED', payload: newMat });
+        }
+
+        // Simpan ke Firestore agar Portal Siswa mendapatkan update instan
+        try {
+          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'materials', newMat.id);
+          await setDoc(docRef, newMat);
+          showNotification(`Materi "${title}" berhasil diterbitkan dan tersinkron ke Portal Siswa!`);
+        } catch (err) {
+          showNotification(`Materi tersimpan lokal (Offline).`);
+        }
+
         e.target.reset();
         setActiveTab('dashboard');
       };
 
-      const handleDeleteMaterial = (id) => {
+      const handleDeleteMaterial = async (id) => {
         if (!window.confirm("Apakah Anda yakin ingin menghapus materi ini beserta seluruh soalnya?")) return;
         setMaterials(prev => prev.filter(m => m.id !== id));
+        
+        const questionsToDelete = questions.filter(q => q.materialId === id);
         setQuestions(prev => prev.filter(q => q.materialId !== id));
-        showNotification("Materi telah dihapus.");
+
+        try {
+          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'materials', id);
+          await deleteDoc(docRef);
+
+          for (const q of questionsToDelete) {
+            const qRef = doc(db, 'artifacts', appId, 'public', 'data', 'questions', q.id);
+            await deleteDoc(qRef);
+          }
+        } catch (e) {}
+
+        showNotification("Materi beserta soal terkait telah dihapus.");
       };
 
-      // Tambah Soal Latihan
-      const handleAddQuestion = (e) => {
+      // Tambah Soal Latihan & Kuis (Sinkron Penuh ke Cloud & Portal Siswa)
+      const handleAddQuestion = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
         const qType = formData.get('type');
@@ -399,12 +484,30 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
         }
 
         setQuestions(prev => [...prev, newQ]);
-        showNotification("Soal berhasil ditambahkan!");
+
+        if (broadcast) {
+          broadcast.postMessage({ type: 'NEW_QUESTION_ADDED', payload: newQ });
+        }
+
+        try {
+          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'questions', newQ.id);
+          await setDoc(docRef, newQ);
+          showNotification("Soal berhasil ditambahkan & tersinkron ke Portal Siswa!");
+        } catch (err) {
+          showNotification("Soal tersimpan di penyimpanan lokal.");
+        }
+
         e.target.reset();
       };
 
-      const handleDeleteQuestion = (qId) => {
+      const handleDeleteQuestion = async (qId) => {
         setQuestions(prev => prev.filter(q => q.id !== qId));
+
+        try {
+          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'questions', qId);
+          await deleteDoc(docRef);
+        } catch (e) {}
+
         showNotification("Soal berhasil dihapus.");
       };
 
@@ -934,7 +1037,7 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
           );
         }
 
-        // TAB: Kelola Soal Latihan & Kuis
+        // TAB: Kelola Soal Latihan & Kuis (Tersinkronisasi dengan Portal Siswa)
         if (activeTab === 'kelola_soal' && selectedMaterial) {
           const matQuestions = questions.filter(q => q.materialId === selectedMaterial.id);
           return (
@@ -951,7 +1054,7 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
                 </div>
 
                 <form onSubmit={handleAddQuestion} className="space-y-4 bg-slate-950 p-4 sm:p-5 rounded-xl border border-slate-800">
-                  <h3 className="font-semibold text-white text-xs">Buat Pertanyaan Baru</h3>
+                  <h3 className="font-semibold text-white text-xs">Buat Pertanyaan Baru (Tersinkron Langsung ke Portal Siswa)</h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="md:col-span-2">
@@ -1001,7 +1104,7 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
                   </div>
 
                   <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-6 rounded-xl text-xs transition-all shadow-md active:scale-95">
-                    + Simpan Soal
+                    + Simpan & Terbitkan Soal
                   </button>
                 </form>
               </div>
@@ -1292,7 +1395,11 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
                       <div className="pt-4 border-t border-slate-800 mt-auto flex items-center justify-between">
                         <span className="text-xs text-slate-400 font-medium">{qCount} Soal/Kuis</span>
                         <button 
-                          onClick={() => { setSelectedMaterial(m); setActiveTab('kelola_soal'); }}
+                          onClick={() => { 
+                            setSelectedMaterial(m); 
+                            setActiveTab('kelola_soal');
+                            syncQuestionsToCloud(m.id);
+                          }}
                           className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl transition-all text-xs font-semibold flex items-center gap-1 active:scale-95"
                         >
                           <List className="w-3.5 h-3.5"/> Kelola Soal

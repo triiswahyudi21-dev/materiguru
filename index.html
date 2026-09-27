@@ -61,11 +61,11 @@
     import { createRoot } from 'react-dom/client';
     import { initializeApp } from 'firebase/app';
     import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
-    import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+    import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
     import { 
       BookOpen, Users, LogIn, FileText, PlusCircle, CheckCircle, 
       Award, ArrowLeft, LogOut, List, Trash2, Filter, Upload, Lock, UserPlus,
-      Clock, AlertTriangle, RefreshCw, Radio, Download, LayoutDashboard, Square
+      Clock, AlertTriangle, RefreshCw, Radio, Download, LayoutDashboard, StopCircle, XCircle
     } from 'lucide-react';
 
     const firebaseConfig = {
@@ -84,7 +84,6 @@
     const db = getFirestore(app);
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'elearning-ips-v3';
 
-    // BroadcastChannel untuk Sync Realtime antar Tab Browser
     const broadcast = typeof window !== 'undefined' && 'BroadcastChannel' in window
       ? new BroadcastChannel('elearning_ips_realtime_channel')
       : null;
@@ -123,33 +122,24 @@
         return local ? JSON.parse(local) : {};
       });
 
-      // State UI Navigation
       const [activeTab, setActiveTab] = useState('dashboard');
       const [selectedMaterial, setSelectedMaterial] = useState(null);
       const [notification, setNotification] = useState(null);
 
-      // Form Login Guru State
       const [loginGuruName, setLoginGuruName] = useState('');
       const [loginGuruPass, setLoginGuruPass] = useState('');
 
-      // State Form Siswa Batch
       const [studentInputKelas, setStudentInputKelas] = useState('7');
       const [studentInputSubKelas, setStudentInputSubKelas] = useState('A');
       const [rawStudentNames, setRawStudentNames] = useState('');
 
-      // Filter
       const [manageStudentClass, setManageStudentClass] = useState('7');
       const [manageStudentSubClass, setManageStudentSubClass] = useState('A');
       const [filterClassGuru, setFilterClassGuru] = useState('semua');
 
-      // State Filter Pantauan Realtime
-      const [monitorFilterClass, setMonitorFilterClass] = useState('semua');
-
-      // State Filter Rekap Nilai
       const [rekapFilterClass, setRekapFilterClass] = useState('semua');
       const [rekapFilterSubClass, setRekapFilterSubClass] = useState('semua');
 
-      // Persistence LocalStorage
       useEffect(() => { localStorage.setItem('elearning_materials_v3', JSON.stringify(materials)); }, [materials]);
       useEffect(() => { localStorage.setItem('elearning_questions_v3', JSON.stringify(questions)); }, [questions]);
       useEffect(() => { localStorage.setItem('elearning_students_v3', JSON.stringify(students)); }, [students]);
@@ -164,7 +154,6 @@
         }
       }, [appSession]);
 
-      // Firebase & Storage Sync Listener
       useEffect(() => {
         const initAuth = async () => {
           try {
@@ -192,7 +181,6 @@
         } catch (err) {}
       }, []);
 
-      // BroadcastChannel Listener
       useEffect(() => {
         if (!broadcast) return;
         const handleMessage = (event) => {
@@ -225,7 +213,6 @@
         setTimeout(() => setNotification(null), 4000);
       };
 
-      // Handler Login Portal Guru
       const handleGuruLogin = (e) => {
         e.preventDefault();
         if (loginGuruPass !== 'guru123') {
@@ -245,7 +232,6 @@
         setSelectedMaterial(null);
       };
 
-      // Terbitkan Materi Baru
       const handleCreateMaterial = (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -291,7 +277,6 @@
         showNotification("Materi telah dihapus.");
       };
 
-      // Tambah Soal Latihan
       const handleAddQuestion = (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -325,7 +310,6 @@
         showNotification("Soal berhasil dihapus.");
       };
 
-      // Upload Siswa Batch
       const handleUploadStudents = (e) => {
         e.preventDefault();
         if (!rawStudentNames.trim()) {
@@ -351,7 +335,21 @@
         showNotification("Nama siswa dihapus dari kelas.");
       };
 
-      // Reset Sesi Siswa Individual
+      // FUNGSI BARU: Hapus Seluruh Siswa untuk Kelas & Rombel yang Dipilih
+      const handleDeleteSelectedClassStudents = () => {
+        const targetStudents = students.filter(s => s.kelas === manageStudentClass && s.subKelas === manageStudentSubClass);
+        if (targetStudents.length === 0) {
+          showNotification(`Tidak ada siswa di Kelas ${manageStudentClass}${manageStudentSubClass} untuk dihapus.`);
+          return;
+        }
+
+        if (window.confirm(`Apakah Anda yakin ingin MENGHAPUS SELURUH (${targetStudents.length}) siswa di Kelas ${manageStudentClass}${manageStudentSubClass}?`)) {
+          setStudents(prev => prev.filter(s => !(s.kelas === manageStudentClass && s.subKelas === manageStudentSubClass)));
+          showNotification(`Seluruh siswa Kelas ${manageStudentClass}${manageStudentSubClass} berhasil dihapus.`);
+        }
+      };
+
+      // Mereset Status Siswa dari Terganggu Kembali ke Aktif (Hijau)
       const handleResetStudentStatus = (presKey, studentName) => {
         if (liveMonitorData[presKey]) {
           const updated = {
@@ -381,72 +379,110 @@
             setDoc(docRef, updated).catch(() => {});
           } catch (e) {}
 
-          showNotification(`Status sesi ${studentName} berhasil di-reset ke Aktif.`);
+          showNotification(`Status pembelajaran ${studentName} di-reset menjadi Aktif (Hijau).`);
         }
       };
 
-      // Hentikan / Hapus Sesi Individual
-      const handleStopOrDeleteSession = (presKey, studentName) => {
-        if (!window.confirm(`Hentikan dan hapus sesi membaca untuk ${studentName}?`)) return;
+      // FUNGSI BARU: Hentikan Sesi Membaca Siswa
+      const handleStopStudentSession = (presKey, studentName) => {
+        if (window.confirm(`Apakah Anda yakin ingin MENGENTIKAN sesi belajar ${studentName}?`)) {
+          if (liveMonitorData[presKey]) {
+            const updated = {
+              ...liveMonitorData[presKey],
+              status: 'stopped',
+              remainingSeconds: 0,
+              lastUpdated: Date.now()
+            };
 
-        setLiveMonitorData(prev => {
-          const nextData = { ...prev };
-          delete nextData[presKey];
-          return nextData;
-        });
+            setLiveMonitorData(prev => ({
+              ...prev,
+              [presKey]: updated
+            }));
 
-        if (broadcast) {
-          broadcast.postMessage({
-            type: 'TEACHER_STOP_SESSION',
-            payload: { studentName, presKey }
+            if (broadcast) {
+              broadcast.postMessage({
+                type: 'TEACHER_STOP_SESSION',
+                payload: { studentName, presKey }
+              });
+              broadcast.postMessage({
+                type: 'STUDENT_PRESENCE_UPDATE',
+                payload: updated
+              });
+            }
+
+            try {
+              const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presKey);
+              setDoc(docRef, updated).catch(() => {});
+            } catch (e) {}
+
+            showNotification(`Sesi belajar ${studentName} telah dihentikan.`);
+          }
+        }
+      };
+
+      // FUNGSI BARU: Reset Sesi Membaca Siswa (Pengaturan Ulang Waktu Timer)
+      const handleResetStudentSession = (presKey, studentName) => {
+        if (window.confirm(`Reset waktu membaca ${studentName} ke durasi awal?`)) {
+          if (liveMonitorData[presKey]) {
+            const initialDuration = (liveMonitorData[presKey].durationMinutes || 15) * 60;
+            const updated = {
+              ...liveMonitorData[presKey],
+              status: 'active',
+              remainingSeconds: initialDuration,
+              lastUpdated: Date.now()
+            };
+
+            setLiveMonitorData(prev => ({
+              ...prev,
+              [presKey]: updated
+            }));
+
+            if (broadcast) {
+              broadcast.postMessage({
+                type: 'TEACHER_RESET_SESSION',
+                payload: { studentName, presKey, remainingSeconds: initialDuration }
+              });
+              broadcast.postMessage({
+                type: 'STUDENT_PRESENCE_UPDATE',
+                payload: updated
+              });
+            }
+
+            try {
+              const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presKey);
+              setDoc(docRef, updated).catch(() => {});
+            } catch (e) {}
+
+            showNotification(`Sesi belajar ${studentName} berhasil di-reset ke durasi awal.`);
+          }
+        }
+      };
+
+      // FUNGSI BARU: Hapus Sesi Siswa Dari Live Monitor
+      const handleDeleteStudentSession = (presKey, studentName) => {
+        if (window.confirm(`Hapus entri sesi ${studentName} dari daftar pantauan?`)) {
+          setLiveMonitorData(prev => {
+            const copy = { ...prev };
+            delete copy[presKey];
+            return copy;
           });
-        }
 
-        try {
-          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presKey);
-          deleteDoc(docRef).catch(() => {});
-        } catch (e) {}
+          if (broadcast) {
+            broadcast.postMessage({
+              type: 'TEACHER_DELETE_SESSION',
+              payload: { studentName, presKey }
+            });
+          }
 
-        showNotification(`Sesi untuk ${studentName} telah dihentikan dan dihapus.`);
-      };
-
-      // Hapus Sesi untuk Kelas yang Dipilih
-      const handleDeleteSessionForSelectedClass = () => {
-        const labelKelas = monitorFilterClass === 'semua' ? 'Semua Kelas' : `Kelas ${monitorFilterClass}`;
-        if (!window.confirm(`Apakah Anda yakin ingin menghapus seluruh sesi pembelajaran untuk ${labelKelas}?`)) return;
-
-        const updatedData = { ...liveMonitorData };
-        const keysToDelete = Object.keys(updatedData).filter(key => {
-          const p = updatedData[key];
-          return monitorFilterClass === 'semua' || String(p.kelas) === String(monitorFilterClass);
-        });
-
-        if (keysToDelete.length === 0) {
-          showNotification("Tidak ada sesi siswa pada kelas yang dipilih.");
-          return;
-        }
-
-        keysToDelete.forEach(key => {
-          delete updatedData[key];
           try {
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', key);
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presKey);
             deleteDoc(docRef).catch(() => {});
           } catch (e) {}
-        });
 
-        setLiveMonitorData(updatedData);
-
-        if (broadcast) {
-          broadcast.postMessage({
-            type: 'TEACHER_CLEAR_CLASS_SESSIONS',
-            payload: { kelasTarget: monitorFilterClass }
-          });
+          showNotification(`Sesi ${studentName} dihapus dari daftar monitor.`);
         }
-
-        showNotification(`Berhasil menghapus ${keysToDelete.length} sesi untuk ${labelKelas}.`);
       };
 
-      // Export Rekap Nilai ke Format Excel (.xlsx)
       const exportToExcel = (filteredScores) => {
         if (!filteredScores || filteredScores.length === 0) {
           showNotification("Tidak ada data nilai yang bisa di-download.");
@@ -544,10 +580,7 @@
 
         // TAB: Pantauan Realtime Siswa
         if (activeTab === 'monitor') {
-          const rawPresence = Object.values(liveMonitorData);
-          const presenceList = rawPresence
-            .filter(p => monitorFilterClass === 'semua' || String(p.kelas) === String(monitorFilterClass))
-            .sort((a, b) => b.lastUpdated - a.lastUpdated);
+          const presenceList = Object.values(liveMonitorData).sort((a, b) => b.lastUpdated - a.lastUpdated);
 
           return (
             <div className="space-y-6 max-w-6xl mx-auto">
@@ -557,7 +590,7 @@
                     <Radio className="w-5 h-5 text-emerald-400 animate-pulse" /> Pantauan Realtime Siswa (Live Student Monitor)
                   </h2>
                   <p className="text-slate-400 text-xs mt-1">
-                    Memonitor secara langsung siswa yang sedang membaca materi. Indikator berubah <span className="text-yellow-400 font-semibold">Kuning</span> saat siswa membuka tab/aplikasi lain.
+                    Memonitor siswa yang membaca materi. Kelola sesi belajar siswa secara langsung dengan fitur reset, hentikan, dan hapus sesi.
                   </p>
                 </div>
                 <button onClick={() => setActiveTab('dashboard')} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs font-semibold bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl self-start md:self-auto">
@@ -583,36 +616,18 @@
                 </div>
 
                 <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex items-center gap-3">
-                  <div className="w-3.5 h-3.5 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50 shrink-0"></div>
+                  <div className="w-3.5 h-3.5 rounded-full bg-red-500 shadow-lg shadow-red-500/50 shrink-0"></div>
                   <div>
-                    <div className="text-xs font-bold text-blue-400">Selesai Membaca / Kuis</div>
-                    <div className="text-[10px] text-slate-400">Siswa telah menyelesaikan durasi/kuis</div>
+                    <div className="text-xs font-bold text-red-400">Dihentikan / Selesai</div>
+                    <div className="text-[10px] text-slate-400">Sesi telah dihentikan atau waktu habis</div>
                   </div>
                 </div>
               </div>
 
               <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-                <div className="p-4 bg-slate-950 border-b border-slate-800 flex flex-wrap justify-between items-center gap-3 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-300">Daftar Aktivitas Realtime ({presenceList.length} Siswa Terdeteksi)</span>
-                    <select 
-                      value={monitorFilterClass} 
-                      onChange={(e) => setMonitorFilterClass(e.target.value)}
-                      className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-white outline-none focus:border-blue-500"
-                    >
-                      <option value="semua">Semua Kelas</option>
-                      <option value="7">Kelas 7</option>
-                      <option value="8">Kelas 8</option>
-                      <option value="9">Kelas 9</option>
-                    </select>
-                  </div>
-
-                  <button
-                    onClick={handleDeleteSessionForSelectedClass}
-                    className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-red-400" /> Hapus Sesi untuk Kelas Dipilih ({monitorFilterClass === 'semua' ? 'Semua Kelas' : `Kelas ${monitorFilterClass}`})
-                  </button>
+                <div className="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center text-xs">
+                  <span className="font-bold text-slate-300">Daftar Aktivitas Realtime ({presenceList.length} Siswa Terdeteksi)</span>
+                  <span className="text-slate-500">Auto Sync Active</span>
                 </div>
 
                 {/* Tampilan Desktop Table */}
@@ -625,7 +640,7 @@
                         <th className="p-4">Materi yang Dibuka</th>
                         <th className="p-4">Sisa Waktu Timer</th>
                         <th className="p-4">Status Kehadiran</th>
-                        <th className="p-4 text-center">Aksi Guru</th>
+                        <th className="p-4 text-center">Kontrol Sesi Guru</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 text-slate-300">
@@ -633,6 +648,7 @@
                         const isWarning = p.status === 'warning';
                         const isActive = p.status === 'active';
                         const isCompleted = p.status === 'completed';
+                        const isStopped = p.status === 'stopped';
 
                         const mins = Math.floor((p.remainingSeconds || 0) / 60);
                         const secs = (p.remainingSeconds || 0) % 60;
@@ -657,7 +673,7 @@
                               {isActive && (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                                  Sedang Belajar (Fokus)
+                                  Sedang Belajar
                                 </span>
                               )}
                               {isWarning && (
@@ -671,6 +687,11 @@
                                   Selesai Membaca
                                 </span>
                               )}
+                              {isStopped && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                                  Sesi Dihentikan
+                                </span>
+                              )}
                               {p.status === 'offline' && (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400">
                                   Keluar Tab
@@ -678,20 +699,39 @@
                               )}
                             </td>
                             <td className="p-4 text-center">
-                              <div className="flex items-center justify-center gap-2">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {isWarning && (
+                                  <button
+                                    onClick={() => handleResetStudentStatus(p.id, p.studentName)}
+                                    className="px-2.5 py-1 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-[11px] rounded-lg shadow transition-all flex items-center gap-1"
+                                    title="Izinkan siswa melanjutkan kembali"
+                                  >
+                                    <RefreshCw className="w-3 h-3" /> Izinkan
+                                  </button>
+                                )}
+
                                 <button
-                                  onClick={() => handleResetStudentStatus(p.id, p.studentName)}
-                                  className="px-2.5 py-1 bg-yellow-500/20 hover:bg-yellow-500 text-yellow-300 hover:text-slate-950 font-bold text-xs rounded-lg border border-yellow-500/40 transition-all flex items-center gap-1"
-                                  title="Reset sesi siswa"
+                                  onClick={() => handleResetStudentSession(p.id, p.studentName)}
+                                  className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 font-bold text-[11px] rounded-lg transition-all flex items-center gap-1"
+                                  title="Reset durasi timer membaca siswa"
                                 >
-                                  <RefreshCw className="w-3.5 h-3.5" /> Reset Sesi
+                                  <RefreshCw className="w-3 h-3" /> Reset Sesi
                                 </button>
+
                                 <button
-                                  onClick={() => handleStopOrDeleteSession(p.id, p.studentName)}
-                                  className="px-2.5 py-1 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white font-bold text-xs rounded-lg border border-red-500/40 transition-all flex items-center gap-1"
-                                  title="Hentikan dan hapus sesi siswa"
+                                  onClick={() => handleStopStudentSession(p.id, p.studentName)}
+                                  className="px-2 py-1 bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 font-bold text-[11px] rounded-lg transition-all flex items-center gap-1"
+                                  title="Hentikan pengerjaan/pembacaan siswa secara paksa"
                                 >
-                                  <Square className="w-3 h-3 fill-current" /> Hentikan / Hapus
+                                  <StopCircle className="w-3 h-3" /> Hentikan Sesi
+                                </button>
+
+                                <button
+                                  onClick={() => handleDeleteStudentSession(p.id, p.studentName)}
+                                  className="p-1 bg-slate-800 hover:bg-red-600/80 text-slate-400 hover:text-white rounded-lg transition-all"
+                                  title="Hapus sesi dari daftar monitor"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             </td>
@@ -716,13 +756,14 @@
                     const isWarning = p.status === 'warning';
                     const isActive = p.status === 'active';
                     const isCompleted = p.status === 'completed';
+                    const isStopped = p.status === 'stopped';
 
                     const mins = Math.floor((p.remainingSeconds || 0) / 60);
                     const secs = (p.remainingSeconds || 0) % 60;
                     const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
                     return (
-                      <div key={p.id} className={`p-4 space-y-2.5 ${isWarning ? 'bg-yellow-500/10' : ''}`}>
+                      <div key={p.id} className={`p-4 space-y-3 ${isWarning ? 'bg-yellow-500/10' : ''}`}>
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="font-bold text-white text-sm">{p.studentName}</div>
@@ -738,7 +779,7 @@
                           <span className="text-slate-500">Materi: </span>{p.materialTitle}
                         </div>
 
-                        <div className="flex justify-between items-center pt-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/60">
                           <div>
                             {isActive && (
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -757,20 +798,39 @@
                                 Selesai
                               </span>
                             )}
+                            {isStopped && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                                Dihentikan
+                              </span>
+                            )}
                           </div>
 
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1">
+                            {isWarning && (
+                              <button
+                                onClick={() => handleResetStudentStatus(p.id, p.studentName)}
+                                className="px-2 py-1 bg-yellow-500 text-slate-950 font-bold text-[10px] rounded"
+                              >
+                                Izinkan
+                              </button>
+                            )}
                             <button
-                              onClick={() => handleResetStudentStatus(p.id, p.studentName)}
-                              className="px-2 py-1 bg-yellow-500 text-slate-950 font-bold text-[11px] rounded-lg shadow transition-all flex items-center gap-1"
+                              onClick={() => handleResetStudentSession(p.id, p.studentName)}
+                              className="px-2 py-1 bg-blue-600/30 text-blue-300 font-bold text-[10px] rounded border border-blue-500/30"
                             >
-                              <RefreshCw className="w-3 h-3" /> Reset
+                              Reset
                             </button>
                             <button
-                              onClick={() => handleStopOrDeleteSession(p.id, p.studentName)}
-                              className="px-2 py-1 bg-red-600 text-white font-bold text-[11px] rounded-lg shadow transition-all flex items-center gap-1"
+                              onClick={() => handleStopStudentSession(p.id, p.studentName)}
+                              className="px-2 py-1 bg-red-600/30 text-red-300 font-bold text-[10px] rounded border border-red-500/30"
                             >
-                              <Square className="w-3 h-3 fill-current" /> Hapus
+                              Hentikan
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStudentSession(p.id, p.studentName)}
+                              className="p-1 text-slate-400 hover:text-red-400"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
@@ -1024,9 +1084,9 @@
                 </div>
 
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col">
-                  <div className="flex justify-between items-center mb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                     <h3 className="font-bold text-white text-xs">Siswa Terdaftar</h3>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                       <select value={manageStudentClass} onChange={(e) => setManageStudentClass(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 text-xs text-white">
                         <option value="7">Kelas 7</option>
                         <option value="8">Kelas 8</option>
@@ -1040,6 +1100,18 @@
                       </select>
                     </div>
                   </div>
+
+                  {/* TOMBOL BARU: Hapus Seluruh Siswa Rombel Terpilih */}
+                  {currentFilteredStudents.length > 0 && (
+                    <div className="mb-3 flex justify-end">
+                      <button
+                        onClick={handleDeleteSelectedClassStudents}
+                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Hapus Seluruh Siswa Kelas {manageStudentClass}{manageStudentSubClass}
+                      </button>
+                    </div>
+                  )}
 
                   <div className="flex-1 overflow-y-auto max-h-[350px] space-y-2 pr-1">
                     {currentFilteredStudents.map((st, i) => (
@@ -1089,7 +1161,6 @@
                 </div>
               </div>
 
-              {/* Filter Kelas & Rombel Nilai */}
               <div className="p-4 bg-slate-950/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-slate-400 font-semibold flex items-center gap-1">
@@ -1124,7 +1195,6 @@
                 </div>
               </div>
 
-              {/* Tampilan Desktop Table */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
@@ -1159,7 +1229,6 @@
                 </table>
               </div>
 
-              {/* Tampilan Mobile Card View */}
               <div className="md:hidden divide-y divide-slate-800">
                 {filteredScores.map((s, idx) => (
                   <div key={s.id || idx} className="p-4 space-y-2">
@@ -1313,7 +1382,6 @@
             {renderTeacherContent()}
           </main>
 
-          {/* Bottom Navigation Khusus Layar HP / Mobile */}
           <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 z-50 px-3 py-2 flex justify-around items-center">
             <button 
               onClick={() => { setActiveTab('dashboard'); setSelectedMaterial(null); }}

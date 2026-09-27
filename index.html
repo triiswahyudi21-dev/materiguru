@@ -61,24 +61,23 @@
     import { createRoot } from 'react-dom/client';
     import { initializeApp } from 'firebase/app';
     import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
-    import { 
-      getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp, writeBatch 
-    } from 'firebase/firestore';
+    import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
     import { 
       BookOpen, Users, LogIn, FileText, PlusCircle, CheckCircle, 
       Award, ArrowLeft, LogOut, List, Trash2, Filter, Upload, Lock, UserPlus,
-      Clock, AlertTriangle, RefreshCw, Radio, Download, LayoutDashboard, StopCircle, XCircle
+      Clock, AlertTriangle, RefreshCw, Radio, Download, LayoutDashboard
     } from 'lucide-react';
 
+    // Konfigurasi Firebase
     const firebaseConfig = {
-      apiKey: "AIzaSyCeLgFGRdFmnTHIW2j8DRChOakANYYRBT0",
-      authDomain: "portalguru-7b0f3.firebaseapp.com",
-      databaseURL: "https://portalguru-7b0f3-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "portalguru-7b0f3",
-      storageBucket: "portalguru-7b0f3.firebasestorage.app",
-      messagingSenderId: "985612460607",
-      appId: "1:985612460607:web:0125a10149ebf6884b8e8a",
-      measurementId: "G-M2QJTR8G6R"
+      apiKey: "AIzaSyD3M8FfqHdzCRO3VCKB24xPEcEZgVVK--M",
+      authDomain: "gen-lang-client-0031221493.firebaseapp.com",
+      databaseURL: "https://gen-lang-client-0031221493-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "gen-lang-client-0031221493",
+      storageBucket: "gen-lang-client-0031221493.firebasestorage.app",
+      messagingSenderId: "514951591302",
+      appId: "1:514951591302:web:65d128106e2d2f3663e807",
+      measurementId: "G-VF7M8CDSYQ"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -86,9 +85,76 @@
     const db = getFirestore(app);
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'elearning-ips-v3';
 
+    // BroadcastChannel untuk Sync Realtime antar Tab Browser
     const broadcast = typeof window !== 'undefined' && 'BroadcastChannel' in window
       ? new BroadcastChannel('elearning_ips_realtime_channel')
       : null;
+
+    const defaultMaterials = [
+      { 
+        id: 'm1', 
+        title: 'Mengenal Kebutuhan Manusia & Kelangkaan Sumber Daya', 
+        kelas: '7', 
+        subKelasTarget: 'semua', 
+        semester: '1', 
+        durationMinutes: 15,
+        content: `Kebutuhan manusia merupakan aspek esensial yang harus dipenuhi untuk mempertahankan kelangsungan hidup.
+
+1. Kebutuhan Menurut Tingkat Intensitas:
+   - Kebutuhan Primer: Kebutuhan pokok seperti pangan, sandang, dan papan.
+   - Kebutuhan Sekunder: Kebutuhan pelengkap setelah kebutuhan primer terpenuhi, seperti perabot rumah dan alat komunikasi.
+   - Kebutuhan Tersier: Kebutuhan akan barang mewah untuk meningkatkan status sosial.
+
+2. Kelangkaan (Scarcity):
+   Kelangkaan terjadi ketika alat pemuas kebutuhan jumlahnya terbatas sementara kebutuhan manusia tidak terbatas.
+   Faktor penyebab kelangkaan meliputi:
+   - Keterbatasan sumber daya alam.
+   - Perbedaan letak geografis.
+   - Pertumbuhan jumlah penduduk yang pesat.
+   - Keterbatasan kemampuan produksi manusia.`, 
+        imageUrl: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80',
+        source: 'Buku Paket IPS SMP Kelas 7 Kemendikbudristek Bab 1',
+        createdBy: 'Dra. Hj. Siti Rahmah, M.Pd.',
+        createdAt: Date.now()
+      },
+      {
+        id: 'm2',
+        title: 'Perubahan Sosial Budaya dan Dampak Globalisasi',
+        kelas: '9',
+        subKelasTarget: 'semua',
+        semester: '1',
+        durationMinutes: 20,
+        content: `Perubahan sosial budaya adalah perubahan yang terjadi pada sistem sosial, struktur, dan fungsi masyarakat.
+
+A. Bentuk Perubahan Sosial Budaya:
+1. Dilihat dari waktunya: Evolusi (lambat) dan Revolusi (cepat).
+2. Dilihat dari pengaruhnya: Pengaruh kecil dan Pengaruh besar.
+3. Dilihat dari perencanaannya: Perubahan yang direncanakan dan tidak direncanakan.
+
+B. Globalisasi:
+Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar negara. Globalisasi membawa dampak positif seperti kemajuan teknologi informasi, namun juga dampak negatif seperti westernisasi dan demoralisasi jika tidak disikapi secara bijak.`,
+        imageUrl: 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=800&q=80',
+        source: 'Buku Paket IPS Kelas 9 Kurikulum Merdeka Bab 2',
+        createdBy: 'Dra. Hj. Siti Rahmah, M.Pd.',
+        createdAt: Date.now() - 86400000
+      }
+    ];
+
+    const defaultStudents = [
+      { id: 's1', name: 'Ahmad Rizky Pratama', kelas: '7', subKelas: 'A' },
+      { id: 's2', name: 'Anisa Rahmawati', kelas: '7', subKelas: 'A' },
+      { id: 's3', name: 'Budi Santoso', kelas: '7', subKelas: 'B' },
+      { id: 's4', name: 'Bayu Nugroho', kelas: '7', subKelas: 'C' },
+      { id: 's5', name: 'Dina Mariana', kelas: '7', subKelas: 'D' },
+      { id: 's6', name: 'Citra Dewi Kartika', kelas: '8', subKelas: 'A' },
+      { id: 's7', name: 'Dimas Anggara', kelas: '8', subKelas: 'B' },
+      { id: 's8', name: 'Eka Putri Utami', kelas: '8', subKelas: 'C' },
+      { id: 's9', name: 'Fajar Hidayat', kelas: '8', subKelas: 'D' },
+      { id: 's10', name: 'Farel Prayoga', kelas: '9', subKelas: 'A' },
+      { id: 's11', name: 'Gilang Ramadhan', kelas: '9', subKelas: 'B' },
+      { id: 's12', name: 'Hani Sofia', kelas: '9', subKelas: 'C' },
+      { id: 's13', name: 'Indah Permata', kelas: '9', subKelas: 'D' }
+    ];
 
     function TeacherApp() {
       const [appSession, setAppSession] = useState(() => {
@@ -98,17 +164,20 @@
 
       const [materials, setMaterials] = useState(() => {
         const local = localStorage.getItem('elearning_materials_v3');
-        return local ? JSON.parse(local) : [];
+        return local ? JSON.parse(local) : defaultMaterials;
       });
 
       const [questions, setQuestions] = useState(() => {
         const local = localStorage.getItem('elearning_questions_v3');
-        return local ? JSON.parse(local) : [];
+        return local ? JSON.parse(local) : [
+          { id: 'q1', materialId: 'm1', type: 'pg', questionText: 'Makanan, pakaian, dan tempat tinggal termasuk dalam jenis kebutuhan...', optionA: 'Primer', optionB: 'Sekunder', optionC: 'Tersier', optionD: 'Jasmani', correctAnswer: 'A' },
+          { id: 'q2', materialId: 'm1', type: 'isian', questionText: 'Kondisi dimana alat pemuas kebutuhan jumlahnya terbatas sedangkan kebutuhan tidak terbatas disebut...', correctAnswer: 'kelangkaan' }
+        ];
       });
 
       const [students, setStudents] = useState(() => {
         const local = localStorage.getItem('elearning_students_v3');
-        return local ? JSON.parse(local) : [];
+        return local ? JSON.parse(local) : defaultStudents;
       });
 
       const [scores, setScores] = useState(() => {
@@ -121,24 +190,30 @@
         return local ? JSON.parse(local) : {};
       });
 
+      // State UI Navigation
       const [activeTab, setActiveTab] = useState('dashboard');
       const [selectedMaterial, setSelectedMaterial] = useState(null);
       const [notification, setNotification] = useState(null);
 
+      // Form Login Guru State
       const [loginGuruName, setLoginGuruName] = useState('');
       const [loginGuruPass, setLoginGuruPass] = useState('');
 
+      // State Form Siswa Batch
       const [studentInputKelas, setStudentInputKelas] = useState('7');
       const [studentInputSubKelas, setStudentInputSubKelas] = useState('A');
       const [rawStudentNames, setRawStudentNames] = useState('');
 
+      // Filter
       const [manageStudentClass, setManageStudentClass] = useState('7');
       const [manageStudentSubClass, setManageStudentSubClass] = useState('A');
       const [filterClassGuru, setFilterClassGuru] = useState('semua');
 
+      // State Filter Rekap Nilai
       const [rekapFilterClass, setRekapFilterClass] = useState('semua');
       const [rekapFilterSubClass, setRekapFilterSubClass] = useState('semua');
 
+      // Persistence LocalStorage
       useEffect(() => { localStorage.setItem('elearning_materials_v3', JSON.stringify(materials)); }, [materials]);
       useEffect(() => { localStorage.setItem('elearning_questions_v3', JSON.stringify(questions)); }, [questions]);
       useEffect(() => { localStorage.setItem('elearning_students_v3', JSON.stringify(students)); }, [students]);
@@ -153,7 +228,7 @@
         }
       }, [appSession]);
 
-      // --- SINKRONISASI CLOUD FIRESTORE TIGA DERAJAT REALTIME ---
+      // Firebase & Storage Sync Listener
       useEffect(() => {
         const initAuth = async () => {
           try {
@@ -163,92 +238,69 @@
               await signInAnonymously(auth);
             }
           } catch (e) {
-            console.log("Firebase fallback lokal/anonim aktif");
+            console.log("Firebase fallback lokal aktif");
           }
         };
         initAuth();
 
-        // 1. Sync Student Presence Realtime
-        const unsubPresence = onSnapshot(
-          collection(db, 'artifacts', appId, 'public', 'data', 'student_presence'),
-          (snapshot) => {
-            const remote = {};
-            snapshot.docs.forEach(docSnap => {
-              remote[docSnap.id] = docSnap.data();
+        // 1. Listener Firestore untuk presensi siswa secara realtime
+        try {
+          const presenceCol = collection(db, 'artifacts', appId, 'public', 'data', 'student_presence');
+          const unsubPresence = onSnapshot(presenceCol, (snapshot) => {
+            const remotePresences = {};
+            snapshot.docs.forEach(doc => {
+              remotePresences[doc.id] = doc.data();
             });
-            setLiveMonitorData(remote);
-          },
-          (err) => console.log("Presence offline sync aktif")
-        );
-
-        // 2. Sync Materials Realtime
-        const unsubMaterials = onSnapshot(
-          collection(db, 'artifacts', appId, 'public', 'data', 'materials'),
-          (snapshot) => {
-            if (!snapshot.empty) {
-              const remoteMat = snapshot.docs.map(docSnap => docSnap.data());
-              setMaterials(remoteMat);
+            if (Object.keys(remotePresences).length > 0) {
+              setLiveMonitorData(prev => ({ ...prev, ...remotePresences }));
             }
-          },
-          (err) => console.log("Materials offline sync")
-        );
+          }, (err) => console.log("Offline mode active"));
 
-        // 3. Sync Questions Realtime
-        const unsubQuestions = onSnapshot(
-          collection(db, 'artifacts', appId, 'public', 'data', 'questions'),
-          (snapshot) => {
-            if (!snapshot.empty) {
-              const remoteQ = snapshot.docs.map(docSnap => docSnap.data());
-              setQuestions(remoteQ);
+          // 2. Listener Firestore untuk Data Siswa Realtime
+          const studentsCol = collection(db, 'artifacts', appId, 'public', 'data', 'students');
+          const unsubStudents = onSnapshot(studentsCol, (snapshot) => {
+            const remoteStudents = [];
+            snapshot.docs.forEach(doc => {
+              remoteStudents.push(doc.data());
+            });
+            if (remoteStudents.length > 0) {
+              setStudents(remoteStudents);
             }
-          },
-          (err) => console.log("Questions offline sync")
-        );
+          }, (err) => console.log("Gagal membaca siswa dari cloud"));
 
-        // 4. Sync Students List Realtime
-        const unsubStudents = onSnapshot(
-          collection(db, 'artifacts', appId, 'public', 'data', 'students'),
-          (snapshot) => {
-            if (!snapshot.empty) {
-              const remoteSt = snapshot.docs.map(docSnap => docSnap.data());
-              setStudents(remoteSt);
-            }
-          },
-          (err) => console.log("Students offline sync")
-        );
-
-        // 5. Sync Scores Realtime
-        const unsubScores = onSnapshot(
-          collection(db, 'artifacts', appId, 'public', 'data', 'scores'),
-          (snapshot) => {
-            if (!snapshot.empty) {
-              const remoteSc = snapshot.docs.map(docSnap => docSnap.data());
-              setScores(remoteSc);
-            }
-          },
-          (err) => console.log("Scores offline sync")
-        );
-
-        return () => {
-          unsubPresence();
-          unsubMaterials();
-          unsubQuestions();
-          unsubStudents();
-          unsubScores();
-        };
+          return () => {
+            unsubPresence();
+            unsubStudents();
+          };
+        } catch (err) {}
       }, []);
 
+      // BroadcastChannel Listener untuk update dari Tab Siswa
       useEffect(() => {
         if (!broadcast) return;
         const handleMessage = (event) => {
           const { type, payload } = event.data || {};
           if (type === 'STUDENT_PRESENCE_UPDATE') {
-            setLiveMonitorData(prev => ({ ...prev, [payload.id]: payload }));
+            setLiveMonitorData(prev => ({
+              ...prev,
+              [payload.id]: payload
+            }));
           }
         };
 
+        const handleStorageChange = () => {
+          const sc = localStorage.getItem('elearning_scores_v3');
+          if (sc) setScores(JSON.parse(sc));
+          const lm = localStorage.getItem('elearning_live_monitor');
+          if (lm) setLiveMonitorData(JSON.parse(lm));
+        };
+
         broadcast.addEventListener('message', handleMessage);
-        return () => broadcast.removeEventListener('message', handleMessage);
+        window.addEventListener('storage', handleStorageChange);
+        return () => {
+          broadcast.removeEventListener('message', handleMessage);
+          window.removeEventListener('storage', handleStorageChange);
+        };
       }, []);
 
       const showNotification = (msg) => {
@@ -256,6 +308,7 @@
         setTimeout(() => setNotification(null), 4000);
       };
 
+      // Handler Login Portal Guru
       const handleGuruLogin = (e) => {
         e.preventDefault();
         if (loginGuruPass !== 'guru123') {
@@ -275,7 +328,8 @@
         setSelectedMaterial(null);
       };
 
-      const handleCreateMaterial = async (e) => {
+      // Terbitkan Materi Baru
+      const handleCreateMaterial = (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
 
@@ -293,9 +347,8 @@
           return;
         }
 
-        const matId = 'mat_' + Date.now();
         const newMat = {
-          id: matId,
+          id: 'mat_' + Date.now(),
           title,
           kelas,
           subKelasTarget,
@@ -309,39 +362,26 @@
         };
 
         setMaterials(prev => [newMat, ...prev]);
-
-        try {
-          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'materials', matId);
-          await setDoc(docRef, newMat);
-        } catch (err) {
-          console.error("Firestore sync error:", err);
-        }
-
         showNotification(`Materi "${title}" berhasil diterbitkan untuk Kelas ${kelas}!`);
         e.target.reset();
         setActiveTab('dashboard');
       };
 
-      const handleDeleteMaterial = async (id) => {
+      const handleDeleteMaterial = (id) => {
         if (!window.confirm("Apakah Anda yakin ingin menghapus materi ini beserta seluruh soalnya?")) return;
         setMaterials(prev => prev.filter(m => m.id !== id));
         setQuestions(prev => prev.filter(q => q.materialId !== id));
-
-        try {
-          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'materials', id));
-        } catch (err) {}
-
         showNotification("Materi telah dihapus.");
       };
 
-      const handleAddQuestion = async (e) => {
+      // Tambah Soal Latihan
+      const handleAddQuestion = (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
         const qType = formData.get('type');
-        const qId = 'q_' + Date.now();
 
         const newQ = {
-          id: qId,
+          id: 'q_' + Date.now(),
           materialId: selectedMaterial.id,
           type: qType,
           questionText: formData.get('questionText'),
@@ -359,24 +399,16 @@
         }
 
         setQuestions(prev => [...prev, newQ]);
-
-        try {
-          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'questions', qId);
-          await setDoc(docRef, newQ);
-        } catch (err) {}
-
         showNotification("Soal berhasil ditambahkan!");
         e.target.reset();
       };
 
-      const handleDeleteQuestion = async (qId) => {
+      const handleDeleteQuestion = (qId) => {
         setQuestions(prev => prev.filter(q => q.id !== qId));
-        try {
-          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'questions', qId));
-        } catch (err) {}
         showNotification("Soal berhasil dihapus.");
       };
 
+      // Upload Siswa Batch ke Cloud Database (Firestore)
       const handleUploadStudents = async (e) => {
         e.preventDefault();
         if (!rawStudentNames.trim()) {
@@ -395,50 +427,34 @@
         setStudents(prev => [...prev, ...newStus]);
         setRawStudentNames('');
 
+        // Simpan ke Cloud Database (Firestore)
         try {
-          const batch = writeBatch(db);
-          newStus.forEach(st => {
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', st.id);
-            batch.set(docRef, st);
-          });
-          await batch.commit();
-        } catch (err) {}
-
-        showNotification(`Berhasil menambahkan ${newStus.length} siswa ke Kelas ${studentInputKelas}${studentInputSubKelas}!`);
+          for (const student of newStus) {
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', student.id);
+            await setDoc(docRef, student);
+          }
+          showNotification(`Berhasil menyimpan ${newStus.length} siswa ke Database Cloud!`);
+        } catch (err) {
+          console.error("Gagal menyimpan ke cloud:", err);
+          showNotification(`Siswa tersimpan di lokal, tetapi gagal sinkronisasi ke Cloud.`);
+        }
       };
 
       const handleDeleteStudent = async (stId) => {
         setStudents(prev => prev.filter(s => s.id !== stId));
+        
+        // Hapus juga dari Firestore Cloud
         try {
-          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', stId));
-        } catch (err) {}
-        showNotification("Nama siswa dihapus dari kelas.");
-      };
-
-      const handleDeleteSelectedClassStudents = async () => {
-        const targetStudents = students.filter(s => s.kelas === manageStudentClass && s.subKelas === manageStudentSubClass);
-        if (targetStudents.length === 0) {
-          showNotification(`Tidak ada siswa di Kelas ${manageStudentClass}${manageStudentSubClass} untuk dihapus.`);
-          return;
-        }
-
-        if (window.confirm(`Apakah Anda yakin ingin MENGHAPUS SELURUH (${targetStudents.length}) siswa di Kelas ${manageStudentClass}${manageStudentSubClass}?`)) {
-          setStudents(prev => prev.filter(s => !(s.kelas === manageStudentClass && s.subKelas === manageStudentSubClass)));
-
-          try {
-            const batch = writeBatch(db);
-            targetStudents.forEach(st => {
-              const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', st.id);
-              batch.delete(docRef);
-            });
-            await batch.commit();
-          } catch (err) {}
-
-          showNotification(`Seluruh siswa Kelas ${manageStudentClass}${manageStudentSubClass} berhasil dihapus.`);
+          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', stId);
+          await deleteDoc(docRef);
+          showNotification("Nama siswa berhasil dihapus dari cloud database.");
+        } catch (err) {
+          showNotification("Nama siswa dihapus dari kelas.");
         }
       };
 
-      const handleResetStudentStatus = async (presKey, studentName) => {
+      // Mereset Status Siswa dari Kuning/Terganggu Kembali ke Aktif (Hijau)
+      const handleResetStudentStatus = (presKey, studentName) => {
         if (liveMonitorData[presKey]) {
           const updated = {
             ...liveMonitorData[presKey],
@@ -446,98 +462,32 @@
             lastUpdated: Date.now()
           };
 
-          setLiveMonitorData(prev => ({ ...prev, [presKey]: updated }));
+          setLiveMonitorData(prev => ({
+            ...prev,
+            [presKey]: updated
+          }));
 
           if (broadcast) {
-            broadcast.postMessage({ type: 'TEACHER_RESET_STATUS', payload: { studentName, presKey } });
-            broadcast.postMessage({ type: 'STUDENT_PRESENCE_UPDATE', payload: updated });
+            broadcast.postMessage({
+              type: 'TEACHER_RESET_STATUS',
+              payload: { studentName, presKey }
+            });
+            broadcast.postMessage({
+              type: 'STUDENT_PRESENCE_UPDATE',
+              payload: updated
+            });
           }
 
           try {
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presKey);
-            await setDoc(docRef, updated);
+            setDoc(docRef, updated).catch(() => {});
           } catch (e) {}
 
           showNotification(`Status pembelajaran ${studentName} di-reset menjadi Aktif (Hijau).`);
         }
       };
 
-      const handleStopStudentSession = async (presKey, studentName) => {
-        if (window.confirm(`Apakah Anda yakin ingin MENGHENTIKAN sesi belajar ${studentName}?`)) {
-          if (liveMonitorData[presKey]) {
-            const updated = {
-              ...liveMonitorData[presKey],
-              status: 'stopped',
-              remainingSeconds: 0,
-              lastUpdated: Date.now()
-            };
-
-            setLiveMonitorData(prev => ({ ...prev, [presKey]: updated }));
-
-            if (broadcast) {
-              broadcast.postMessage({ type: 'TEACHER_STOP_SESSION', payload: { studentName, presKey } });
-              broadcast.postMessage({ type: 'STUDENT_PRESENCE_UPDATE', payload: updated });
-            }
-
-            try {
-              const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presKey);
-              await setDoc(docRef, updated);
-            } catch (e) {}
-
-            showNotification(`Sesi belajar ${studentName} telah dihentikan.`);
-          }
-        }
-      };
-
-      const handleResetStudentSession = async (presKey, studentName) => {
-        if (window.confirm(`Reset waktu membaca ${studentName} ke durasi awal?`)) {
-          if (liveMonitorData[presKey]) {
-            const initialDuration = (liveMonitorData[presKey].durationMinutes || 15) * 60;
-            const updated = {
-              ...liveMonitorData[presKey],
-              status: 'active',
-              remainingSeconds: initialDuration,
-              lastUpdated: Date.now()
-            };
-
-            setLiveMonitorData(prev => ({ ...prev, [presKey]: updated }));
-
-            if (broadcast) {
-              broadcast.postMessage({ type: 'TEACHER_RESET_SESSION', payload: { studentName, presKey, remainingSeconds: initialDuration } });
-              broadcast.postMessage({ type: 'STUDENT_PRESENCE_UPDATE', payload: updated });
-            }
-
-            try {
-              const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presKey);
-              await setDoc(docRef, updated);
-            } catch (e) {}
-
-            showNotification(`Sesi belajar ${studentName} berhasil di-reset ke durasi awal.`);
-          }
-        }
-      };
-
-      const handleDeleteStudentSession = async (presKey, studentName) => {
-        if (window.confirm(`Hapus entri sesi ${studentName} dari daftar pantauan?`)) {
-          setLiveMonitorData(prev => {
-            const copy = { ...prev };
-            delete copy[presKey];
-            return copy;
-          });
-
-          if (broadcast) {
-            broadcast.postMessage({ type: 'TEACHER_DELETE_SESSION', payload: { studentName, presKey } });
-          }
-
-          try {
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presKey);
-            await deleteDoc(docRef);
-          } catch (e) {}
-
-          showNotification(`Sesi ${studentName} dihapus dari daftar monitor.`);
-        }
-      };
-
+      // Export Rekap Nilai ke Format Excel (.xlsx)
       const exportToExcel = (filteredScores) => {
         if (!filteredScores || filteredScores.length === 0) {
           showNotification("Tidak ada data nilai yang bisa di-download.");
@@ -559,6 +509,7 @@
         }));
 
         const worksheet = XLSX.utils.json_to_sheet(excelData);
+        
         worksheet['!cols'] = [
           { wch: 6 },
           { wch: 30 },
@@ -644,7 +595,7 @@
                     <Radio className="w-5 h-5 text-emerald-400 animate-pulse" /> Pantauan Realtime Siswa (Live Student Monitor)
                   </h2>
                   <p className="text-slate-400 text-xs mt-1">
-                    Memonitor siswa yang membaca materi secara langsung via Firestore Cloud.
+                    Memonitor secara langsung siswa yang sedang membaca materi. Indikator berubah <span className="text-yellow-400 font-semibold">Kuning</span> saat siswa membuka tab/aplikasi lain.
                   </p>
                 </div>
                 <button onClick={() => setActiveTab('dashboard')} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs font-semibold bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl self-start md:self-auto">
@@ -670,10 +621,10 @@
                 </div>
 
                 <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex items-center gap-3">
-                  <div className="w-3.5 h-3.5 rounded-full bg-red-500 shadow-lg shadow-red-500/50 shrink-0"></div>
+                  <div className="w-3.5 h-3.5 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50 shrink-0"></div>
                   <div>
-                    <div className="text-xs font-bold text-red-400">Dihentikan / Selesai</div>
-                    <div className="text-[10px] text-slate-400">Sesi telah dihentikan atau waktu habis</div>
+                    <div className="text-xs font-bold text-blue-400">Selesai Membaca / Kuis</div>
+                    <div className="text-[10px] text-slate-400">Siswa telah menyelesaikan durasi/kuis</div>
                   </div>
                 </div>
               </div>
@@ -681,7 +632,7 @@
               <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
                 <div className="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center text-xs">
                   <span className="font-bold text-slate-300">Daftar Aktivitas Realtime ({presenceList.length} Siswa Terdeteksi)</span>
-                  <span className="text-emerald-400 flex items-center gap-1 font-semibold"><Radio className="w-3.5 h-3.5 animate-pulse" /> Cloud Sync Active</span>
+                  <span className="text-slate-500">Auto Sync Active</span>
                 </div>
 
                 <div className="hidden md:block overflow-x-auto">
@@ -693,7 +644,7 @@
                         <th className="p-4">Materi yang Dibuka</th>
                         <th className="p-4">Sisa Waktu Timer</th>
                         <th className="p-4">Status Kehadiran</th>
-                        <th className="p-4 text-center">Kontrol Sesi Guru</th>
+                        <th className="p-4 text-center">Aksi Guru</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 text-slate-300">
@@ -701,7 +652,6 @@
                         const isWarning = p.status === 'warning';
                         const isActive = p.status === 'active';
                         const isCompleted = p.status === 'completed';
-                        const isStopped = p.status === 'stopped';
 
                         const mins = Math.floor((p.remainingSeconds || 0) / 60);
                         const secs = (p.remainingSeconds || 0) % 60;
@@ -724,7 +674,7 @@
                               {isActive && (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                                  Sedang Belajar
+                                  Sedang Belajar (Fokus)
                                 </span>
                               )}
                               {isWarning && (
@@ -738,49 +688,22 @@
                                   Selesai Membaca
                                 </span>
                               )}
-                              {isStopped && (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
-                                  Sesi Dihentikan
-                                </span>
-                              )}
                             </td>
                             <td className="p-4 text-center">
-                              <div className="flex items-center justify-center gap-1.5">
-                                {isWarning && (
-                                  <button
-                                    onClick={() => handleResetStudentStatus(p.id, p.studentName)}
-                                    className="px-2.5 py-1 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-[11px] rounded-lg shadow transition-all flex items-center gap-1"
-                                  >
-                                    <RefreshCw className="w-3 h-3" /> Izinkan
-                                  </button>
-                                )}
-
+                              {isWarning ? (
                                 <button
-                                  onClick={() => handleResetStudentSession(p.id, p.studentName)}
-                                  className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 font-bold text-[11px] rounded-lg transition-all flex items-center gap-1"
+                                  onClick={() => handleResetStudentStatus(p.id, p.studentName)}
+                                  className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1 mx-auto"
                                 >
-                                  <RefreshCw className="w-3 h-3" /> Reset Sesi
+                                  <RefreshCw className="w-3.5 h-3.5" /> Reset / Izinkan Lanjut
                                 </button>
-
-                                <button
-                                  onClick={() => handleStopStudentSession(p.id, p.studentName)}
-                                  className="px-2 py-1 bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 font-bold text-[11px] rounded-lg transition-all flex items-center gap-1"
-                                >
-                                  <StopCircle className="w-3 h-3" /> Hentikan
-                                </button>
-
-                                <button
-                                  onClick={() => handleDeleteStudentSession(p.id, p.studentName)}
-                                  className="p-1 bg-slate-800 hover:bg-red-600/80 text-slate-400 hover:text-white rounded-lg transition-all"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
+                              ) : (
+                                <span className="text-slate-600 text-[11px] italic">Normal</span>
+                              )}
                             </td>
                           </tr>
                         );
                       })}
-
                       {presenceList.length === 0 && (
                         <tr>
                           <td colSpan="6" className="p-12 text-center text-slate-500 italic">
@@ -790,86 +713,6 @@
                       )}
                     </tbody>
                   </table>
-                </div>
-
-                <div className="md:hidden divide-y divide-slate-800">
-                  {presenceList.map((p) => {
-                    const isWarning = p.status === 'warning';
-                    const isActive = p.status === 'active';
-                    const isCompleted = p.status === 'completed';
-                    const isStopped = p.status === 'stopped';
-
-                    const mins = Math.floor((p.remainingSeconds || 0) / 60);
-                    const secs = (p.remainingSeconds || 0) % 60;
-                    const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-
-                    return (
-                      <div key={p.id} className={`p-4 space-y-3 ${isWarning ? 'bg-yellow-500/10' : ''}`}>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="font-bold text-white text-sm">{p.studentName}</div>
-                            <div className="text-[11px] text-slate-400">Kelas {p.kelas}</div>
-                          </div>
-                          <div className="font-mono font-bold text-xs text-amber-300 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
-                            <Clock className="w-3 h-3 inline mr-1 text-amber-400" />
-                            {timeStr}
-                          </div>
-                        </div>
-
-                        <div className="text-xs text-slate-300 font-medium">
-                          <span className="text-slate-500">Materi: </span>{p.materialTitle}
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/60">
-                          <div>
-                            {isActive && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                Sedang Belajar
-                              </span>
-                            )}
-                            {isWarning && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/40">
-                                Tidak Fokus
-                              </span>
-                            )}
-                            {isCompleted && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                                Selesai
-                              </span>
-                            )}
-                            {isStopped && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
-                                Dihentikan
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            {isWarning && (
-                              <button onClick={() => handleResetStudentStatus(p.id, p.studentName)} className="px-2 py-1 bg-yellow-500 text-slate-950 font-bold text-[10px] rounded">
-                                Izinkan
-                              </button>
-                            )}
-                            <button onClick={() => handleResetStudentSession(p.id, p.studentName)} className="px-2 py-1 bg-blue-600/30 text-blue-300 font-bold text-[10px] rounded border border-blue-500/30">
-                              Reset
-                            </button>
-                            <button onClick={() => handleStopStudentSession(p.id, p.studentName)} className="px-2 py-1 bg-red-600/30 text-red-300 font-bold text-[10px] rounded border border-red-500/30">
-                              Hentikan
-                            </button>
-                            <button onClick={() => handleDeleteStudentSession(p.id, p.studentName)} className="p-1 text-slate-400 hover:text-red-400">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {presenceList.length === 0 && (
-                    <div className="p-8 text-center text-slate-500 italic text-xs">
-                      Belum ada siswa yang sedang aktif membaca materi secara realtime.
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -943,7 +786,7 @@
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Teks Isi Materi Pembelajaran (Kolom Luas)</label>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Teks Isi Materi Pembelajaran</label>
                   <textarea name="content" required rows="12" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:border-blue-500 outline-none leading-relaxed font-sans" placeholder="Tuliskan rangkuman dan uraian materi IPS secara mendalam di sini..."></textarea>
                 </div>
 
@@ -1032,7 +875,7 @@
                 <div className="space-y-3">
                   {matQuestions.map((q, idx) => (
                     <div key={q.id} className="p-4 rounded-xl bg-slate-950 border border-slate-800 relative">
-                      <button onClick={() => handleDeleteQuestion(q.id)} className="absolute top-4 right-4 text-slate-500 hover:text-red-400 transition-colors">
+                      <button onClick={() => handleDeleteQuestion(q.id)} className="absolute top-4 right-4 text-slate-500 hover:text-red-400 transition-colors" title="Hapus Soal">
                         <Trash2 className="w-4 h-4" />
                       </button>
                       <p className="font-semibold text-slate-200 text-xs mb-2 pr-8">{idx + 1}. {q.questionText} <span className="text-[10px] text-blue-400 font-normal">({q.type === 'pg' ? 'Pilihan Ganda' : 'Isian'})</span></p>
@@ -1056,14 +899,14 @@
           );
         }
 
-        // TAB: Upload & Kelola Data Siswa
+        // TAB: Upload & Kelola Data Siswa Cloud Database
         if (activeTab === 'upload_siswa') {
           const currentFilteredStudents = students.filter(s => s.kelas === manageStudentClass && s.subKelas === manageStudentSubClass);
           
           return (
             <div className="space-y-6 max-w-5xl mx-auto">
               <div className="flex justify-between items-center">
-                <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2"><UserPlus className="text-blue-500 shrink-0"/> Kelola & Upload Siswa Per Rombel</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2"><UserPlus className="text-blue-500 shrink-0"/> Kelola Siswa Cloud (Portal Siswa Ready)</h2>
                 <button onClick={() => setActiveTab('dashboard')} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs font-semibold">
                   <ArrowLeft className="w-4 h-4"/> Kembali
                 </button>
@@ -1071,7 +914,7 @@
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl">
-                  <h3 className="font-bold text-white text-xs mb-4 flex items-center gap-2"><Upload className="w-4 h-4 text-blue-500" /> Batch Upload Nama Siswa</h3>
+                  <h3 className="font-bold text-white text-xs mb-4 flex items-center gap-2"><Upload className="w-4 h-4 text-blue-500" /> Batch Upload ke Cloud Database</h3>
                   <form onSubmit={handleUploadStudents} className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -1105,15 +948,15 @@
                     </div>
 
                     <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md active:scale-95">
-                      Simpan Ke Daftar Siswa Kelas {studentInputKelas}{studentInputSubKelas}
+                      Simpan Ke Cloud Database (Kelas {studentInputKelas}{studentInputSubKelas})
                     </button>
                   </form>
                 </div>
 
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                    <h3 className="font-bold text-white text-xs">Siswa Terdaftar</h3>
-                    <div className="flex items-center gap-2">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-white text-xs">Daftar Siswa (Tersinkronisasi Cloud)</h3>
+                    <div className="flex gap-2">
                       <select value={manageStudentClass} onChange={(e) => setManageStudentClass(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 text-xs text-white">
                         <option value="7">Kelas 7</option>
                         <option value="8">Kelas 8</option>
@@ -1128,28 +971,17 @@
                     </div>
                   </div>
 
-                  {currentFilteredStudents.length > 0 && (
-                    <div className="mb-3 flex justify-end">
-                      <button
-                        onClick={handleDeleteSelectedClassStudents}
-                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1.5"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Hapus Seluruh Siswa Kelas {manageStudentClass}{manageStudentSubClass}
-                      </button>
-                    </div>
-                  )}
-
                   <div className="flex-1 overflow-y-auto max-h-[350px] space-y-2 pr-1">
                     {currentFilteredStudents.map((st, i) => (
                       <div key={st.id} className="flex justify-between items-center p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300">
                         <span>{i + 1}. {st.name}</span>
-                        <button onClick={() => handleDeleteStudent(st.id)} className="text-slate-500 hover:text-red-400 p-1">
+                        <button onClick={() => handleDeleteStudent(st.id)} className="text-slate-500 hover:text-red-400 p-1" title="Hapus Siswa">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ))}
                     {currentFilteredStudents.length === 0 && (
-                      <p className="text-center text-slate-500 text-xs py-12 italic">Belum ada nama siswa untuk Kelas {manageStudentClass}{manageStudentSubClass}.</p>
+                      <p className="text-center text-slate-500 text-xs py-12 italic">Belum ada nama siswa di Cloud untuk Kelas {manageStudentClass}{manageStudentSubClass}.</p>
                     )}
                   </div>
                 </div>
@@ -1254,30 +1086,6 @@
                   </tbody>
                 </table>
               </div>
-
-              <div className="md:hidden divide-y divide-slate-800">
-                {filteredScores.map((s, idx) => (
-                  <div key={s.id || idx} className="p-4 space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-bold text-white text-sm">{s.studentName}</div>
-                        <div className="text-[11px] text-slate-400">Kelas {s.kelas}</div>
-                      </div>
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold ${s.score >= 70 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                        {s.score} / 100
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-300">
-                      <span className="text-slate-500">Materi: </span>{s.materialTitle}
-                    </div>
-                  </div>
-                ))}
-                {filteredScores.length === 0 && (
-                  <div className="p-8 text-center text-slate-500 italic text-xs">
-                    Belum ada data nilai kuis untuk filter kelas ini.
-                  </div>
-                )}
-              </div>
             </div>
           );
         }
@@ -1298,7 +1106,7 @@
                   <Radio className="w-4 h-4 animate-pulse"/> Pantauan Realtime
                 </button>
                 <button onClick={() => setActiveTab('upload_siswa')} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all active:scale-95">
-                  <UserPlus className="w-4 h-4 text-blue-400"/> Kelola Siswa
+                  <UserPlus className="w-4 h-4 text-blue-400"/> Kelola Siswa Cloud
                 </button>
                 <button onClick={() => setActiveTab('rekap_nilai')} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all active:scale-95">
                   <Award className="w-4 h-4 text-yellow-500"/> Rekap Nilai (.xlsx)
@@ -1334,7 +1142,7 @@
                         <span className="bg-blue-500/10 text-blue-400 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-blue-500/20">
                           Kelas {m.kelas} • Smt {m.semester}
                         </span>
-                        <button onClick={() => handleDeleteMaterial(m.id)} className="text-slate-500 hover:text-red-400 transition-colors p-1">
+                        <button onClick={() => handleDeleteMaterial(m.id)} className="text-slate-500 hover:text-red-400 transition-colors p-1" title="Hapus Materi">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

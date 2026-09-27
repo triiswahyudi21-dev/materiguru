@@ -3,43 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Portal Guru - Dashboard E-Learning IPS</title>
+  <title>Portal Guru - E-Learning IPS</title>
 
-  <!-- Google Font: Plus Jakarta Sans -->
+  <!-- Google Font & Tailwind CSS -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- SheetJS / XLSX CDN untuk Export Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <!-- Babel Standalone untuk JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #0f172a;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #334155;
-      border-radius: 9999px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #475569;
-    }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
   </style>
 
-  <!-- Import Map untuk React, Firebase, dan Lucide Icons -->
+  <!-- Import Map React & Firebase -->
   <script type="importmap">
     {
       "imports": {
@@ -53,7 +35,7 @@
     }
   </script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-blue-500 selection:text-white pb-20 md:pb-0">
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-blue-500 selection:text-white">
   <div id="root"></div>
 
   <script type="text/babel" data-type="module">
@@ -61,11 +43,12 @@
     import { createRoot } from 'react-dom/client';
     import { initializeApp } from 'firebase/app';
     import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
-    import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
     import { 
-      BookOpen, Users, LogIn, FileText, PlusCircle, CheckCircle, 
-      Award, ArrowLeft, LogOut, List, Trash2, Filter, Upload, Lock, UserPlus,
-      Clock, AlertTriangle, RefreshCw, Radio, Download, LayoutDashboard
+      getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, writeBatch 
+    } from 'firebase/firestore';
+    import { 
+      BookOpen, Users, HelpCircle, Award, Plus, Trash2, Edit3, Clock, 
+      AlertTriangle, RefreshCw, Square, CheckCircle, Search, UserX, ShieldAlert
     } from 'lucide-react';
 
     // Konfigurasi Firebase
@@ -85,150 +68,36 @@
     const db = getFirestore(app);
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'elearning-ips-v3';
 
-    // BroadcastChannel untuk Sync Realtime antar Tab Browser
+    // BroadcastChannel Sync Realtime
     const broadcast = typeof window !== 'undefined' && 'BroadcastChannel' in window
       ? new BroadcastChannel('elearning_ips_realtime_channel')
       : null;
 
-    const defaultMaterials = [
-      { 
-        id: 'm1', 
-        title: 'Mengenal Kebutuhan Manusia & Kelangkaan Sumber Daya', 
-        kelas: '7', 
-        subKelasTarget: 'semua', 
-        semester: '1', 
-        durationMinutes: 15,
-        content: `Kebutuhan manusia merupakan aspek esensial yang harus dipenuhi untuk mempertahankan kelangsungan hidup.
-
-1. Kebutuhan Menurut Tingkat Intensitas:
-   - Kebutuhan Primer: Kebutuhan pokok seperti pangan, sandang, dan papan.
-   - Kebutuhan Sekunder: Kebutuhan pelengkap setelah kebutuhan primer terpenuhi, seperti perabot rumah dan alat komunikasi.
-   - Kebutuhan Tersier: Kebutuhan akan barang mewah untuk meningkatkan status sosial.
-
-2. Kelangkaan (Scarcity):
-   Kelangkaan terjadi ketika alat pemuas kebutuhan jumlahnya terbatas sementara kebutuhan manusia tidak terbatas.
-   Faktor penyebab kelangkaan meliputi:
-   - Keterbatasan sumber daya alam.
-   - Perbedaan letak geografis.
-   - Pertumbuhan jumlah penduduk yang pesat.
-   - Keterbatasan kemampuan produksi manusia.`, 
-        imageUrl: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80',
-        source: 'Buku Paket IPS SMP Kelas 7 Kemendikbudristek Bab 1',
-        createdBy: 'Dra. Hj. Siti Rahmah, M.Pd.',
-        createdAt: Date.now()
-      },
-      {
-        id: 'm2',
-        title: 'Perubahan Sosial Budaya dan Dampak Globalisasi',
-        kelas: '9',
-        subKelasTarget: 'semua',
-        semester: '1',
-        durationMinutes: 20,
-        content: `Perubahan sosial budaya adalah perubahan yang terjadi pada sistem sosial, struktur, dan fungsi masyarakat.
-
-A. Bentuk Perubahan Sosial Budaya:
-1. Dilihat dari waktunya: Evolusi (lambat) dan Revolusi (cepat).
-2. Dilihat dari pengaruhnya: Pengaruh kecil dan Pengaruh besar.
-3. Dilihat dari perencanaannya: Perubahan yang direncanakan dan tidak direncanakan.
-
-B. Globalisasi:
-Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar negara. Globalisasi membawa dampak positif seperti kemajuan teknologi informasi, namun juga dampak negatif seperti westernisasi dan demoralisasi jika tidak disikapi secara bijak.`,
-        imageUrl: 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=800&q=80',
-        source: 'Buku Paket IPS Kelas 9 Kurikulum Merdeka Bab 2',
-        createdBy: 'Dra. Hj. Siti Rahmah, M.Pd.',
-        createdAt: Date.now() - 86400000
-      }
-    ];
-
-    const defaultStudents = [
-      { id: 's1', name: 'Ahmad Rizky Pratama', kelas: '7', subKelas: 'A' },
-      { id: 's2', name: 'Anisa Rahmawati', kelas: '7', subKelas: 'A' },
-      { id: 's3', name: 'Budi Santoso', kelas: '7', subKelas: 'B' },
-      { id: 's4', name: 'Bayu Nugroho', kelas: '7', subKelas: 'C' },
-      { id: 's5', name: 'Dina Mariana', kelas: '7', subKelas: 'D' },
-      { id: 's6', name: 'Citra Dewi Kartika', kelas: '8', subKelas: 'A' },
-      { id: 's7', name: 'Dimas Anggara', kelas: '8', subKelas: 'B' },
-      { id: 's8', name: 'Eka Putri Utami', kelas: '8', subKelas: 'C' },
-      { id: 's9', name: 'Fajar Hidayat', kelas: '8', subKelas: 'D' },
-      { id: 's10', name: 'Farel Prayoga', kelas: '9', subKelas: 'A' },
-      { id: 's11', name: 'Gilang Ramadhan', kelas: '9', subKelas: 'B' },
-      { id: 's12', name: 'Hani Sofia', kelas: '9', subKelas: 'C' },
-      { id: 's13', name: 'Indah Permata', kelas: '9', subKelas: 'D' }
-    ];
-
     function TeacherApp() {
-      const [appSession, setAppSession] = useState(() => {
-        const saved = localStorage.getItem('elearning_guru_session_v3');
-        return saved ? JSON.parse(saved) : null;
-      });
+      const [activeTab, setActiveTab] = useState('monitoring'); // monitoring | materials | questions | students | scores
 
-      const [materials, setMaterials] = useState(() => {
-        const local = localStorage.getItem('elearning_materials_v3');
-        return local ? JSON.parse(local) : defaultMaterials;
-      });
+      // State Data Utama
+      const [studentsList, setStudentsList] = useState([]);
+      const [materials, setMaterials] = useState([]);
+      const [questions, setQuestions] = useState([]);
+      const [presence, setPresence] = useState({});
+      const [scores, setScores] = useState([]);
 
-      const [questions, setQuestions] = useState(() => {
-        const local = localStorage.getItem('elearning_questions_v3');
-        return local ? JSON.parse(local) : [
-          { id: 'q1', materialId: 'm1', type: 'pg', questionText: 'Makanan, pakaian, dan tempat tinggal termasuk dalam jenis kebutuhan...', optionA: 'Primer', optionB: 'Sekunder', optionC: 'Tersier', optionD: 'Jasmani', correctAnswer: 'A' },
-          { id: 'q2', materialId: 'm1', type: 'isian', questionText: 'Kondisi dimana alat pemuas kebutuhan jumlahnya terbatas sedangkan kebutuhan tidak terbatas disebut...', correctAnswer: 'kelangkaan' }
-        ];
-      });
+      // Filter State
+      const [filterKelas, setFilterKelas] = useState('7');
+      const [filterSubKelas, setFilterSubKelas] = useState('A');
+      const [searchTerm, setSearchTerm] = useState('');
 
-      const [students, setStudents] = useState(() => {
-        const local = localStorage.getItem('elearning_students_v3');
-        return local ? JSON.parse(local) : defaultStudents;
-      });
+      // Form Modals / Input States
+      const [newStudentName, setNewStudentName] = useState('');
+      const [newStudentNISN, setNewStudentNISN] = useState('');
 
-      const [scores, setScores] = useState(() => {
-        const local = localStorage.getItem('elearning_scores_v3');
-        return local ? JSON.parse(local) : [];
-      });
+      const [matForm, setMatForm] = useState({ id: '', title: '', content: '', durationMinutes: 15, source: '', imageUrl: '' });
+      const [isEditMat, setIsEditMat] = useState(false);
 
-      const [liveMonitorData, setLiveMonitorData] = useState(() => {
-        const local = localStorage.getItem('elearning_live_monitor');
-        return local ? JSON.parse(local) : {};
-      });
+      const [questForm, setQuestForm] = useState({ id: '', materialId: '', type: 'pg', questionText: '', optionA: '', optionB: '', optionC: '', optionD: '', correctAnswer: 'A' });
 
-      // State UI Navigation
-      const [activeTab, setActiveTab] = useState('dashboard');
-      const [selectedMaterial, setSelectedMaterial] = useState(null);
-      const [notification, setNotification] = useState(null);
-
-      // Form Login Guru State
-      const [loginGuruName, setLoginGuruName] = useState('');
-      const [loginGuruPass, setLoginGuruPass] = useState('');
-
-      // State Form Siswa Batch
-      const [studentInputKelas, setStudentInputKelas] = useState('7');
-      const [studentInputSubKelas, setStudentInputSubKelas] = useState('A');
-      const [rawStudentNames, setRawStudentNames] = useState('');
-
-      // Filter
-      const [manageStudentClass, setManageStudentClass] = useState('7');
-      const [manageStudentSubClass, setManageStudentSubClass] = useState('A');
-      const [filterClassGuru, setFilterClassGuru] = useState('semua');
-
-      // State Filter Rekap Nilai
-      const [rekapFilterClass, setRekapFilterClass] = useState('semua');
-      const [rekapFilterSubClass, setRekapFilterSubClass] = useState('semua');
-
-      // Persistence LocalStorage
-      useEffect(() => { localStorage.setItem('elearning_materials_v3', JSON.stringify(materials)); }, [materials]);
-      useEffect(() => { localStorage.setItem('elearning_questions_v3', JSON.stringify(questions)); }, [questions]);
-      useEffect(() => { localStorage.setItem('elearning_students_v3', JSON.stringify(students)); }, [students]);
-      useEffect(() => { localStorage.setItem('elearning_scores_v3', JSON.stringify(scores)); }, [scores]);
-      useEffect(() => { localStorage.setItem('elearning_live_monitor', JSON.stringify(liveMonitorData)); }, [liveMonitorData]);
-
-      useEffect(() => {
-        if (appSession) {
-          localStorage.setItem('elearning_guru_session_v3', JSON.stringify(appSession));
-        } else {
-          localStorage.removeItem('elearning_guru_session_v3');
-        }
-      }, [appSession]);
-
-      // Firebase & Storage Sync Listener (Firestore Realtime)
+      // Synchronize Firebase Auth & Firestore Listeners
       useEffect(() => {
         const initAuth = async () => {
           try {
@@ -238,536 +107,831 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
               await signInAnonymously(auth);
             }
           } catch (e) {
-            console.log("Firebase fallback lokal aktif");
+            console.log("Firebase Fallback Mode");
           }
         };
         initAuth();
 
-        // 1. Listener Firestore untuk Presensi Siswa
-        try {
-          const presenceCol = collection(db, 'artifacts', appId, 'public', 'data', 'student_presence');
-          const unsubPresence = onSnapshot(presenceCol, (snapshot) => {
-            const remotePresences = {};
-            snapshot.docs.forEach(doc => {
-              remotePresences[doc.id] = doc.data();
-            });
-            if (Object.keys(remotePresences).length > 0) {
-              setLiveMonitorData(prev => ({ ...prev, ...remotePresences }));
-            }
-          }, (err) => console.log("Offline mode active"));
+        // 1. Sync Siswa
+        const unsubStudents = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'students'), (snap) => {
+          const list = snap.docs.map(doc => doc.data());
+          setStudentsList(list);
+        });
 
-          // 2. Listener Firestore untuk Data Siswa Realtime
-          const studentsCol = collection(db, 'artifacts', appId, 'public', 'data', 'students');
-          const unsubStudents = onSnapshot(studentsCol, (snapshot) => {
-            const remoteStudents = [];
-            snapshot.docs.forEach(doc => {
-              remoteStudents.push(doc.data());
-            });
-            if (remoteStudents.length > 0) {
-              setStudents(remoteStudents);
-            }
-          }, (err) => console.log("Gagal membaca siswa dari cloud"));
+        // 2. Sync Materi
+        const unsubMaterials = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'materials'), (snap) => {
+          const list = snap.docs.map(doc => doc.data());
+          setMaterials(list);
+        });
 
-          // 3. Listener Firestore untuk Data Materi Realtime (Portal Siswa Sync)
-          const materialsCol = collection(db, 'artifacts', appId, 'public', 'data', 'materials');
-          const unsubMaterials = onSnapshot(materialsCol, (snapshot) => {
-            const remoteMaterials = [];
-            snapshot.docs.forEach(doc => {
-              remoteMaterials.push(doc.data());
-            });
-            if (remoteMaterials.length > 0) {
-              setMaterials(remoteMaterials);
-            }
-          }, (err) => console.log("Gagal membaca materi dari cloud"));
+        // 3. Sync Soal
+        const unsubQuestions = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'questions'), (snap) => {
+          const list = snap.docs.map(doc => doc.data());
+          setQuestions(list);
+        });
 
-          // 4. Listener Firestore untuk Data Soal Kuis Realtime
-          const questionsCol = collection(db, 'artifacts', appId, 'public', 'data', 'questions');
-          const unsubQuestions = onSnapshot(questionsCol, (snapshot) => {
-            const remoteQuestions = [];
-            snapshot.docs.forEach(doc => {
-              remoteQuestions.push(doc.data());
-            });
-            if (remoteQuestions.length > 0) {
-              setQuestions(remoteQuestions);
-            }
-          }, (err) => console.log("Gagal membaca soal dari cloud"));
+        // 4. Sync Presence (Monitoring Belajar)
+        const unsubPresence = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'student_presence'), (snap) => {
+          const map = {};
+          snap.docs.forEach(d => { map[d.id] = d.data(); });
+          setPresence(map);
+        });
 
-          return () => {
-            unsubPresence();
-            unsubStudents();
-            unsubMaterials();
-            unsubQuestions();
-          };
-        } catch (err) {}
+        // 5. Sync Nilai Kuis
+        const unsubScores = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'scores'), (snap) => {
+          const list = snap.docs.map(doc => doc.data());
+          setScores(list);
+        });
+
+        return () => {
+          unsubStudents();
+          unsubMaterials();
+          unsubQuestions();
+          unsubPresence();
+          unsubScores();
+        };
       }, []);
 
-      // BroadcastChannel Listener untuk update dari Tab Siswa
+      // Broadcast channel listener untuk real-time sync lokal
       useEffect(() => {
         if (!broadcast) return;
         const handleMessage = (event) => {
           const { type, payload } = event.data || {};
-          if (type === 'STUDENT_PRESENCE_UPDATE') {
-            setLiveMonitorData(prev => ({
-              ...prev,
-              [payload.id]: payload
-            }));
+          if (type === 'STUDENT_PRESENCE_UPDATE' && payload) {
+            setPresence(prev => ({ ...prev, [payload.id]: payload }));
           }
         };
-
-        const handleStorageChange = () => {
-          const sc = localStorage.getItem('elearning_scores_v3');
-          if (sc) setScores(JSON.parse(sc));
-          const lm = localStorage.getItem('elearning_live_monitor');
-          if (lm) setLiveMonitorData(JSON.parse(lm));
-        };
-
         broadcast.addEventListener('message', handleMessage);
-        window.addEventListener('storage', handleStorageChange);
-        return () => {
-          broadcast.removeEventListener('message', handleMessage);
-          window.removeEventListener('storage', handleStorageChange);
-        };
+        return () => broadcast.removeEventListener('message', handleMessage);
       }, []);
 
-      const showNotification = (msg) => {
-        setNotification(msg);
-        setTimeout(() => setNotification(null), 4000);
+      // === FITUR BARU MANAGEMENT SESI SISWA ===
+
+      // 1. Hentikan Sesi Siswa
+      const handleStopSession = async (presenceId) => {
+        const item = presence[presenceId];
+        if (!item) return;
+
+        const updated = { ...item, status: 'stopped', remainingSeconds: 0, lastUpdated: Date.now() };
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presenceId), updated);
+        if (broadcast) broadcast.postMessage({ type: 'TEACHER_STOP_SESSION', payload: updated });
       };
 
-      // Handler Login Portal Guru
-      const handleGuruLogin = (e) => {
-        e.preventDefault();
-        if (loginGuruPass !== 'guru123') {
-          showNotification("Password Guru Salah! Gunakan: guru123");
-          return;
+      // 2. Reset Sesi Siswa
+      const handleResetSession = async (presenceId) => {
+        const item = presence[presenceId];
+        if (!item) return;
+
+        const mat = materials.find(m => m.id === item.materialId);
+        const resetSeconds = mat ? (mat.durationMinutes || 15) * 60 : 900;
+
+        const updated = { 
+          ...item, 
+          status: 'active', 
+          remainingSeconds: resetSeconds, 
+          lastUpdated: Date.now() 
+        };
+
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presenceId), updated);
+        if (broadcast) broadcast.postMessage({ type: 'TEACHER_RESET_STATUS', payload: updated });
+      };
+
+      // 3. Hapus Sesi Siswa Individual
+      const handleDeleteSession = async (presenceId) => {
+        if (confirm("Apakah Anda yakin ingin menghapus data pantauan sesi belajar siswa ini?")) {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presenceId));
         }
-
-        const guruName = loginGuruName.trim() ? loginGuruName : 'Guru Pengajar IPS';
-        setAppSession({ username: guruName });
-        setActiveTab('dashboard');
-        showNotification(`Selamat Datang, ${guruName}!`);
       };
 
-      const handleLogout = () => {
-        setAppSession(null);
-        setActiveTab('dashboard');
-        setSelectedMaterial(null);
-      };
+      // === FITUR BARU HAPUS KELAS TERPILIH ===
+      const handleDeleteSelectedClass = async () => {
+        const targetClassStr = `Kelas ${filterKelas}${filterSubKelas}`;
+        const confirmText = `APAKAH ANDA YAKIN INGIN MENGHAPUS SEMUA DATA PADA ${targetClassStr}?\n\nTindakan ini akan menghapus:\n1. Seluruh Daftar Siswa di ${targetClassStr}\n2. Seluruh Record Sesi Belajar di ${targetClassStr}`;
+        
+        if (confirm(confirmText)) {
+          const batch = writeBatch(db);
 
-      // Terbitkan Materi Baru (Simpan ke Firestore Cloud agar Tampil di Portal Siswa)
-      const handleCreateMaterial = async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
+          // A. Hapus siswa pada kelas terpilih
+          const classStudents = studentsList.filter(s => 
+            (s.kelas === filterKelas || s.kelas === `Kelas ${filterKelas}`) &&
+            (s.subKelas === filterSubKelas || s.subKelas === `Rombel ${filterSubKelas}`)
+          );
+          classStudents.forEach(s => {
+            batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'students', s.id));
+          });
 
-        const title = formData.get('title');
-        const kelas = formData.get('kelas');
-        const subKelasTarget = formData.get('subKelasTarget');
-        const semester = formData.get('semester');
-        const durationMinutes = parseInt(formData.get('durationMinutes')) || 15;
-        const content = formData.get('content');
-        const imageUrl = formData.get('imageUrl') || '';
-        const source = formData.get('source') || '';
+          // B. Hapus presence pada kelas terpilih
+          Object.values(presence).forEach(p => {
+            if (p.kelas === `${filterKelas}${filterSubKelas}`) {
+              batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', p.id));
+            }
+          });
 
-        if (!title || !content) {
-          showNotification("Judul dan Teks Isi Materi Wajib Diisi!");
-          return;
+          await batch.commit();
+          alert(`Berhasil menghapus seluruh data siswa dan sesi pada ${targetClassStr}.`);
         }
+      };
 
-        const newMat = {
-          id: 'mat_' + Date.now(),
-          title,
-          kelas,
-          subKelasTarget,
-          semester,
-          durationMinutes,
-          content,
-          imageUrl,
-          source,
-          createdBy: appSession.username,
+      // === CRUD SISWA ===
+      const handleAddStudent = async (e) => {
+        e.preventDefault();
+        if (!newStudentName.trim()) return;
+
+        const newId = 'std_' + Date.now();
+        const studentObj = {
+          id: newId,
+          name: newStudentName.trim(),
+          nisn: newStudentNISN.trim(),
+          kelas: filterKelas,
+          subKelas: filterSubKelas,
           createdAt: Date.now()
         };
 
-        setMaterials(prev => [newMat, ...prev]);
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', newId), studentObj);
+        setNewStudentName('');
+        setNewStudentNISN('');
+      };
 
-        // Simpan ke Firestore Database Cloud agar Siswa bisa membuka materi ini
-        try {
-          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'materials', newMat.id);
-          await setDoc(docRef, newMat);
-          showNotification(`Berhasil menerbitkan "${title}" ke Cloud! (Bisa dibuka di Portal Siswa)`);
-        } catch (err) {
-          console.error("Gagal simpan materi ke cloud:", err);
-          showNotification("Materi tersimpan lokal, namun gagal sync ke Cloud.");
+      const handleDeleteStudent = async (studentId) => {
+        if (confirm("Hapus siswa ini dari daftar kelas?")) {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId));
         }
+      };
 
-        e.target.reset();
-        setActiveTab('dashboard');
+      // === CRUD MATERI ===
+      const handleSaveMaterial = async (e) => {
+        e.preventDefault();
+        if (!matForm.title || !matForm.content) return;
+
+        const matId = isEditMat ? matForm.id : 'mat_' + Date.now();
+        const matData = {
+          id: matId,
+          title: matForm.title,
+          content: matForm.content,
+          durationMinutes: parseInt(matForm.durationMinutes) || 15,
+          source: matForm.source || '',
+          imageUrl: matForm.imageUrl || '',
+          kelas: filterKelas,
+          subKelasTarget: filterSubKelas,
+          createdAt: Date.now()
+        };
+
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'materials', matId), matData);
+        setMatForm({ id: '', title: '', content: '', durationMinutes: 15, source: '', imageUrl: '' });
+        setIsEditMat(false);
       };
 
       const handleDeleteMaterial = async (id) => {
-        if (!window.confirm("Apakah Anda yakin ingin menghapus materi ini beserta seluruh soalnya?")) return;
-        setMaterials(prev => prev.filter(m => m.id !== id));
-        setQuestions(prev => prev.filter(q => q.materialId !== id));
-
-        // Hapus dari Firestore Cloud
-        try {
-          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'materials', id);
-          await deleteDoc(docRef);
-          showNotification("Materi telah dihapus dari Cloud Database.");
-        } catch (err) {
-          showNotification("Materi telah dihapus dari tampilan lokal.");
+        if (confirm("Hapus materi ini? Semua soal terkait juga akan terpengaruh.")) {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'materials', id));
         }
       };
 
-      // Tambah Soal Latihan (Sync ke Firestore Cloud)
-      const handleAddQuestion = async (e) => {
+      // === CRUD SOAL ===
+      const handleSaveQuestion = async (e) => {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const qType = formData.get('type');
+        if (!questForm.materialId || !questForm.questionText) return;
 
-        const newQ = {
-          id: 'q_' + Date.now(),
-          materialId: selectedMaterial.id,
-          type: qType,
-          questionText: formData.get('questionText'),
+        const qId = questForm.id || 'q_' + Date.now();
+        const qData = {
+          ...questForm,
+          id: qId,
           createdAt: Date.now()
         };
 
-        if (qType === 'pg') {
-          newQ.optionA = formData.get('optionA');
-          newQ.optionB = formData.get('optionB');
-          newQ.optionC = formData.get('optionC');
-          newQ.optionD = formData.get('optionD');
-          newQ.correctAnswer = formData.get('correctAnswer');
-        } else {
-          newQ.correctAnswer = formData.get('correctAnswerIsian');
-        }
-
-        setQuestions(prev => [...prev, newQ]);
-
-        // Simpan Soal ke Firestore Cloud
-        try {
-          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'questions', newQ.id);
-          await setDoc(docRef, newQ);
-          showNotification("Soal berhasil tersimpan ke Cloud!");
-        } catch (err) {
-          showNotification("Soal tersimpan di memori lokal.");
-        }
-
-        e.target.reset();
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'questions', qId), qData);
+        setQuestForm({ id: '', materialId: '', type: 'pg', questionText: '', optionA: '', optionB: '', optionC: '', optionD: '', correctAnswer: 'A' });
       };
 
-      const handleDeleteQuestion = async (qId) => {
-        setQuestions(prev => prev.filter(q => q.id !== qId));
-
-        try {
-          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'questions', qId);
-          await deleteDoc(docRef);
-          showNotification("Soal berhasil dihapus dari Cloud.");
-        } catch (err) {
-          showNotification("Soal berhasil dihapus.");
+      const handleDeleteQuestion = async (id) => {
+        if (confirm("Hapus soal ini?")) {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'questions', id));
         }
       };
 
-      // Upload Siswa Batch ke Cloud Database (Firestore)
-      const handleUploadStudents = async (e) => {
-        e.preventDefault();
-        if (!rawStudentNames.trim()) {
-          showNotification("Masukkan daftar nama siswa!");
-          return;
-        }
+      // Filter List Sesuai Pilihan Kelas & Rombel
+      const filteredStudents = studentsList.filter(s => 
+        (s.kelas === filterKelas || s.kelas === `Kelas ${filterKelas}`) && 
+        (s.subKelas === filterSubKelas || s.subKelas === `Rombel ${filterSubKelas}`) &&
+        s.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
 
-        const lines = rawStudentNames.split('\n').map(l => l.trim()).filter(l => l !== '');
-        const newStus = lines.map((name, i) => ({
-          id: `st_${Date.now()}_${i}`,
-          name,
-          kelas: studentInputKelas,
-          subKelas: studentInputSubKelas
-        }));
+      const filteredPresenceList = Object.values(presence).filter(p => 
+        p.kelas === `${filterKelas}${filterSubKelas}` &&
+        p.studentName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
 
-        setStudents(prev => [...prev, ...newStus]);
-        setRawStudentNames('');
+      const filteredMaterials = materials.filter(m => 
+        m.kelas === filterKelas && (m.subKelasTarget === 'semua' || m.subKelasTarget === filterSubKelas)
+      );
 
-        // Simpan ke Cloud Database (Firestore)
-        try {
-          for (const student of newStus) {
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', student.id);
-            await setDoc(docRef, student);
-          }
-          showNotification(`Berhasil menyimpan ${newStus.length} siswa ke Database Cloud!`);
-        } catch (err) {
-          console.error("Gagal menyimpan ke cloud:", err);
-          showNotification(`Siswa tersimpan di lokal, tetapi gagal sinkronisasi ke Cloud.`);
-        }
-      };
-
-      const handleDeleteStudent = async (stId) => {
-        setStudents(prev => prev.filter(s => s.id !== stId));
-        
-        // Hapus juga dari Firestore Cloud
-        try {
-          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', stId);
-          await deleteDoc(docRef);
-          showNotification("Nama siswa berhasil dihapus dari cloud database.");
-        } catch (err) {
-          showNotification("Nama siswa dihapus dari kelas.");
-        }
-      };
-
-      // Mereset Status Siswa dari Kuning/Terganggu Kembali ke Aktif (Hijau)
-      const handleResetStudentStatus = (presKey, studentName) => {
-        if (liveMonitorData[presKey]) {
-          const updated = {
-            ...liveMonitorData[presKey],
-            status: 'active',
-            lastUpdated: Date.now()
-          };
-
-          setLiveMonitorData(prev => ({
-            ...prev,
-            [presKey]: updated
-          }));
-
-          if (broadcast) {
-            broadcast.postMessage({
-              type: 'TEACHER_RESET_STATUS',
-              payload: { studentName, presKey }
-            });
-            broadcast.postMessage({
-              type: 'STUDENT_PRESENCE_UPDATE',
-              payload: updated
-            });
-          }
-
-          try {
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'student_presence', presKey);
-            setDoc(docRef, updated).catch(() => {});
-          } catch (e) {}
-
-          showNotification(`Status pembelajaran ${studentName} di-reset menjadi Aktif (Hijau).`);
-        }
-      };
-
-      // Export Rekap Nilai ke Format Excel (.xlsx)
-      const exportToExcel = (filteredScores) => {
-        if (!filteredScores || filteredScores.length === 0) {
-          showNotification("Tidak ada data nilai yang bisa di-download.");
-          return;
-        }
-
-        if (typeof XLSX === 'undefined') {
-          showNotification("Pustaka Excel gagal dimuat. Periksa koneksi internet Anda.");
-          return;
-        }
-
-        const excelData = filteredScores.map((s, index) => ({
-          'No': index + 1,
-          'Nama Siswa': s.studentName || '-',
-          'Kelas': s.kelas ? `Kelas ${s.kelas}` : '-',
-          'Materi IPS': s.materialTitle || '-',
-          'Nilai Akhir': s.score ?? 0,
-          'Keterangan': (s.score ?? 0) >= 70 ? 'Lulus' : 'Remidial'
-        }));
-
-        const worksheet = XLSX.utils.json_to_sheet(excelData);
-        
-        worksheet['!cols'] = [
-          { wch: 6 },
-          { wch: 30 },
-          { wch: 12 },
-          { wch: 40 },
-          { wch: 15 },
-          { wch: 15 }
-        ];
-
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekap Nilai');
-
-        const fileName = `Rekap_Nilai_IPS_Kelas_${rekapFilterClass === 'semua' ? 'Semua' : rekapFilterClass}_${Date.now()}.xlsx`;
-        XLSX.writeFile(workbook, fileName);
-        showNotification("Berhasil mendownload Rekap Nilai Excel!");
-      };
-
-      if (!appSession) {
-        return (
-          <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 relative overflow-hidden">
-            <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
-            <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
-
-            <div className="w-full max-w-lg bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10">
-              <div className="text-center mb-8">
-                <div className="inline-flex p-3.5 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-2xl shadow-lg shadow-blue-500/30 mb-3">
-                  <Lock className="w-8 h-8 text-white" />
+      return (
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+          {/* Header Portal Guru */}
+          <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
+            <div className="max-w-7xl mx-auto px-4 py-3.5 flex flex-wrap justify-between items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2.5 rounded-2xl shadow-lg shadow-blue-500/20">
+                  <BookOpen className="w-6 h-6 text-white" />
                 </div>
-                <h1 className="text-2xl font-extrabold text-white tracking-tight">Portal Guru - E-Learning IPS</h1>
-                <p className="text-slate-400 text-xs mt-1">Dashboard Management & Live Student Activity Tracking</p>
+                <div>
+                  <h1 className="text-base font-extrabold text-white">Portal Guru - Dashboard Pengajar</h1>
+                  <p className="text-xs text-slate-400">E-Learning Mata Pelajaran IPS</p>
+                </div>
               </div>
 
-              {notification && (
-                <div className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-xs text-center mb-6">
-                  {notification}
-                </div>
-              )}
-
-              <form onSubmit={handleGuruLogin} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Nama Pengajar / NIP</label>
-                  <input 
-                    type="text"
-                    placeholder="Masukkan Nama/NIP Guru (Contoh: Dra. Hj. Siti Rahmah)"
-                    value={loginGuruName}
-                    onChange={(e) => setLoginGuruName(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-slate-200 text-xs focus:border-blue-500 outline-none"
-                  />
+              {/* Selector Kelas, Rombel & Tombol Hapus Kelas */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-xs">
+                  <span className="text-slate-400 font-medium">Kelas:</span>
+                  <select 
+                    value={filterKelas} 
+                    onChange={e => setFilterKelas(e.target.value)} 
+                    className="bg-transparent text-white font-bold outline-none cursor-pointer"
+                  >
+                    <option value="7" className="bg-slate-900">Kelas 7</option>
+                    <option value="8" className="bg-slate-900">Kelas 8</option>
+                    <option value="9" className="bg-slate-900">Kelas 9</option>
+                  </select>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Password Otentikasi Guru</label>
-                  <input 
-                    type="password"
-                    placeholder="Password Default: guru123"
-                    value={loginGuruPass}
-                    onChange={(e) => setLoginGuruPass(e.target.value)}
-                    required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-slate-200 text-xs focus:border-blue-500 outline-none"
-                  />
+                <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-xs">
+                  <span className="text-slate-400 font-medium">Rombel:</span>
+                  <select 
+                    value={filterSubKelas} 
+                    onChange={e => setFilterSubKelas(e.target.value)} 
+                    className="bg-transparent text-white font-bold outline-none cursor-pointer"
+                  >
+                    <option value="A" className="bg-slate-900">Rombel A</option>
+                    <option value="B" className="bg-slate-900">Rombel B</option>
+                    <option value="C" className="bg-slate-900">Rombel C</option>
+                    <option value="D" className="bg-slate-900">Rombel D</option>
+                  </select>
                 </div>
 
-                <button type="submit" className="w-full mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-600/30 flex justify-center items-center gap-2 text-xs active:scale-95">
-                  <LogIn className="w-4 h-4"/> Masuk Dashboard Guru
+                <button 
+                  onClick={handleDeleteSelectedClass}
+                  className="bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 font-bold px-3 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5"
+                  title={`Hapus Seluruh Data Kelas ${filterKelas}${filterSubKelas}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus Kelas {filterKelas}{filterSubKelas}</span>
                 </button>
-              </form>
+              </div>
             </div>
-          </div>
-        );
-      }
 
-      const renderTeacherContent = () => {
+            {/* Sub-Navigasi Tab */}
+            <div className="max-w-7xl mx-auto px-4 flex gap-2 overflow-x-auto border-t border-slate-800/60 pt-2 pb-2">
+              <button 
+                onClick={() => setActiveTab('monitoring')} 
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'monitoring' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+              >
+                <Clock className="w-4 h-4"/> Monitoring Realtime Sesi
+              </button>
 
-        // TAB: Pantauan Realtime Siswa
-        if (activeTab === 'monitor') {
-          const presenceList = Object.values(liveMonitorData).sort((a, b) => b.lastUpdated - a.lastUpdated);
+              <button 
+                onClick={() => setActiveTab('students')} 
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'students' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+              >
+                <Users className="w-4 h-4"/> Data Siswa ({filteredStudents.length})
+              </button>
 
-          return (
-            <div className="space-y-6 max-w-6xl mx-auto">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2">
-                    <Radio className="w-5 h-5 text-emerald-400 animate-pulse" /> Pantauan Realtime Siswa (Live Student Monitor)
-                  </h2>
-                  <p className="text-slate-400 text-xs mt-1">
-                    Memonitor secara langsung siswa yang sedang membaca materi. Indikator berubah <span className="text-yellow-400 font-semibold">Kuning</span> saat siswa membuka tab/aplikasi lain.
-                  </p>
-                </div>
-                <button onClick={() => setActiveTab('dashboard')} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs font-semibold bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl self-start md:self-auto">
-                  <ArrowLeft className="w-4 h-4"/> Kembali
-                </button>
-              </div>
+              <button 
+                onClick={() => setActiveTab('materials')} 
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'materials' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+              >
+                <BookOpen className="w-4 h-4"/> Kelola Materi IPS
+              </button>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex items-center gap-3">
-                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50 animate-pulse shrink-0"></div>
+              <button 
+                onClick={() => setActiveTab('questions')} 
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'questions' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+              >
+                <HelpCircle className="w-4 h-4"/> Bank Soal & Evaluasi
+              </button>
+
+              <button 
+                onClick={() => setActiveTab('scores')} 
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'scores' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+              >
+                <Award className="w-4 h-4"/> Rekap Nilai Evaluasi
+              </button>
+            </div>
+          </header>
+
+          <main className="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
+            {/* TAB 1: MONITORING REALTIME SESI SISWA */}
+            {activeTab === 'monitoring' && (
+              <div className="space-y-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
-                    <div className="text-xs font-bold text-emerald-400">Aktif / Sedang Belajar</div>
-                    <div className="text-[10px] text-slate-400">Siswa fokus di tab materi & timer berjalan</div>
+                    <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-blue-400 animate-pulse"/>
+                      Pantauan Kehadiran & Sesi Belajar Realtime
+                    </h2>
+                    <p className="text-slate-400 text-xs mt-1">
+                      Menampilkan status siswa Kelas {filterKelas}{filterSubKelas} yang sedang membaca materi. Anda dapat menghentikan, mereset, atau menghapus sesi.
+                    </p>
+                  </div>
+
+                  <div className="relative w-full sm:w-64">
+                    <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+                    <input 
+                      type="text" 
+                      placeholder="Cari Nama Siswa..." 
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                    />
                   </div>
                 </div>
 
-                <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex items-center gap-3">
-                  <div className="w-3.5 h-3.5 rounded-full bg-yellow-400 shadow-lg shadow-yellow-400/50 animate-bounce shrink-0"></div>
-                  <div>
-                    <div className="text-xs font-bold text-yellow-400">Pindah Tab / Tidak Fokus</div>
-                    <div className="text-[10px] text-slate-400">Siswa membuka tab lain/minimize browser</div>
-                  </div>
-                </div>
+                {/* Tabel Realtime Presence */}
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-semibold">
+                          <th className="p-4">Nama Siswa</th>
+                          <th className="p-4">Materi Dibaca</th>
+                          <th className="p-4">Sisa Waktu</th>
+                          <th className="p-4">Status Sesi</th>
+                          <th className="p-4 text-center">Aksi Sesi Siswa</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {filteredPresenceList.map((p) => {
+                          const mins = Math.floor((p.remainingSeconds || 0) / 60);
+                          const secs = (p.remainingSeconds || 0) % 60;
+                          const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
-                <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex items-center gap-3">
-                  <div className="w-3.5 h-3.5 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50 shrink-0"></div>
-                  <div>
-                    <div className="text-xs font-bold text-blue-400">Selesai Membaca / Kuis</div>
-                    <div className="text-[10px] text-slate-400">Siswa telah menyelesaikan durasi/kuis</div>
-                  </div>
-                </div>
-              </div>
+                          return (
+                            <tr key={p.id} className="hover:bg-slate-800/40 transition-all">
+                              <td className="p-4 font-bold text-white">{p.studentName}</td>
+                              <td className="p-4 text-slate-300">{p.materialTitle}</td>
+                              <td className="p-4 font-mono font-bold text-amber-400">{timeStr}</td>
+                              <td className="p-4">
+                                {p.status === 'active' && (
+                                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 w-max">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Membaca
+                                  </span>
+                                )}
+                                {p.status === 'warning' && (
+                                  <span className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 w-max">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-yellow-400"/> Pindah Tab
+                                  </span>
+                                )}
+                                {p.status === 'completed' && (
+                                  <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 w-max">
+                                    <CheckCircle className="w-3.5 h-3.5 text-blue-400"/> Selesai Baca
+                                  </span>
+                                )}
+                                {p.status === 'stopped' && (
+                                  <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 w-max">
+                                    <Square className="w-3.5 h-3.5 text-rose-400"/> Dihentikan
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center justify-center gap-2">
+                                  {/* Tombol Hentikan Sesi */}
+                                  <button 
+                                    onClick={() => handleStopSession(p.id)}
+                                    title="Hentikan Sesi Belajar Siswa"
+                                    className="p-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 rounded-lg border border-amber-500/20 transition-all"
+                                  >
+                                    <Square className="w-4 h-4"/>
+                                  </button>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-                <div className="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center text-xs">
-                  <span className="font-bold text-slate-300">Daftar Aktivitas Realtime ({presenceList.length} Siswa Terdeteksi)</span>
-                  <span className="text-slate-500">Auto Sync Active</span>
-                </div>
+                                  {/* Tombol Reset Sesi */}
+                                  <button 
+                                    onClick={() => handleResetSession(p.id)}
+                                    title="Reset Waktu & Status Siswa"
+                                    className="p-1.5 bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white rounded-lg border border-blue-500/20 transition-all"
+                                  >
+                                    <RefreshCw className="w-4 h-4"/>
+                                  </button>
 
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="bg-slate-950/50 text-slate-400 uppercase tracking-wider border-b border-slate-800">
-                        <th className="p-4">Nama Siswa</th>
-                        <th className="p-4">Kelas & Rombel</th>
-                        <th className="p-4">Materi yang Dibuka</th>
-                        <th className="p-4">Sisa Waktu Timer</th>
-                        <th className="p-4">Status Kehadiran</th>
-                        <th className="p-4 text-center">Aksi Guru</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800 text-slate-300">
-                      {presenceList.map((p) => {
-                        const isWarning = p.status === 'warning';
-                        const isActive = p.status === 'active';
-                        const isCompleted = p.status === 'completed';
+                                  {/* Tombol Hapus Sesi */}
+                                  <button 
+                                    onClick={() => handleDeleteSession(p.id)}
+                                    title="Hapus Record Sesi Ini"
+                                    className="p-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg border border-rose-500/20 transition-all"
+                                  >
+                                    <Trash2 className="w-4 h-4"/>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
 
-                        const mins = Math.floor((p.remainingSeconds || 0) / 60);
-                        const secs = (p.remainingSeconds || 0) % 60;
-                        const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-
-                        return (
-                          <tr key={p.id} className={`transition-colors ${isWarning ? 'bg-yellow-500/10' : 'hover:bg-slate-800/40'}`}>
-                            <td className="p-4 font-bold text-white">{p.studentName}</td>
-                            <td className="p-4">
-                              <span className="bg-slate-800 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700 font-semibold">
-                                Kelas {p.kelas}
-                              </span>
-                            </td>
-                            <td className="p-4 max-w-xs truncate font-medium text-slate-200">{p.materialTitle}</td>
-                            <td className="p-4 font-mono font-bold text-amber-300">
-                              <Clock className="w-3.5 h-3.5 inline mr-1 text-amber-400" />
-                              {timeStr}
-                            </td>
-                            <td className="p-4">
-                              {isActive && (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                                  Sedang Belajar (Fokus)
-                                </span>
-                              )}
-                              {isWarning && (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-yellow-500/20 text-yellow-300 border border-yellow-500/40">
-                                  <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 animate-bounce" />
-                                  Pindah Tab / Tidak Fokus
-                                </span>
-                              )}
-                              {isCompleted && (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                                  Selesai Membaca
-                                </span>
-                              )}
-                            </td>
-                            <td className="p-4 text-center">
-                              {isWarning ? (
-                                <button
-                                  onClick={() => handleResetStudentStatus(p.id, p.studentName)}
-                                  className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1 mx-auto"
-                                >
-                                  <RefreshCw className="w-3.5 h-3.5" /> Reset / Izinkan Lanjut
-                                </button>
-                              ) : (
-                                <span className="text-slate-600 text-[11px] italic">Normal</span>
-                              )}
+                        {filteredPresenceList.length === 0 && (
+                          <tr>
+                            <td colSpan="5" className="p-8 text-center text-slate-500 text-xs">
+                              Belum ada aktivitas sesi membaca siswa pada Kelas {filterKelas}{filterSubKelas}.
                             </td>
                           </tr>
-                        );
-                      })}
-                      {presenceList.length === 0 && (
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: DATA SISWA PER KELAS */}
+            {activeTab === 'students' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Form Tambah Siswa */}
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4 h-fit">
+                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-400" /> Tambah Siswa Baru
+                  </h3>
+                  <p className="text-slate-400 text-xs">
+                    Siswa yang ditambahkan akan otomatis muncul di menu drop-down Portal Siswa pada Kelas {filterKelas}{filterSubKelas}.
+                  </p>
+
+                  <form onSubmit={handleAddStudent} className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Nama Lengkap Siswa</label>
+                      <input 
+                        type="text" 
+                        required 
+                        placeholder="Contoh: Ahmad Rizky" 
+                        value={newStudentName}
+                        onChange={e => setNewStudentName(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">NISN (Opsional)</label>
+                      <input 
+                        type="text" 
+                        placeholder="Contoh: 0081234567" 
+                        value={newStudentNISN}
+                        onChange={e => setNewStudentNISN(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/30 text-xs flex justify-center items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4"/> Tambahkan ke Kelas {filterKelas}{filterSubKelas}
+                    </button>
+                  </form>
+                </div>
+
+                {/* Tabel Daftar Siswa */}
+                <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl p-6 space-y-4">
+                  <div className="flex justify-between items-center gap-4">
+                    <h3 className="text-base font-extrabold text-white">
+                      Daftar Siswa Kelas {filterKelas}{filterSubKelas}
+                    </h3>
+                    <div className="relative w-48">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+                      <input 
+                        type="text" 
+                        placeholder="Cari nama..." 
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-semibold">
+                          <th className="p-3">No</th>
+                          <th className="p-3">Nama Siswa</th>
+                          <th className="p-3">NISN</th>
+                          <th className="p-3 text-center">Hapus</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {filteredStudents.map((s, idx) => (
+                          <tr key={s.id} className="hover:bg-slate-800/40 transition-all">
+                            <td className="p-3 text-slate-500 font-mono">{idx + 1}</td>
+                            <td className="p-3 font-bold text-white">{s.name}</td>
+                            <td className="p-3 text-slate-400 font-mono">{s.nisn || '-'}</td>
+                            <td className="p-3 text-center">
+                              <button 
+                                onClick={() => handleDeleteStudent(s.id)}
+                                className="p-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg border border-rose-500/20 transition-all"
+                                title="Hapus Siswa"
+                              >
+                                <UserX className="w-3.5 h-3.5"/>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+
+                        {filteredStudents.length === 0 && (
+                          <tr>
+                            <td colSpan="4" className="p-8 text-center text-slate-500 text-xs">
+                              Belum ada siswa terdaftar di Kelas {filterKelas}{filterSubKelas}. Tambahkan siswa melalui form di samping.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: KELOLA MATERI IPS */}
+            {activeTab === 'materials' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Form Buat / Edit Materi */}
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4 h-fit">
+                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-blue-400" /> {isEditMat ? 'Edit Materi IPS' : 'Terbitkan Materi IPS'}
+                  </h3>
+
+                  <form onSubmit={handleSaveMaterial} className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Judul Materi</label>
+                      <input 
+                        type="text" 
+                        required 
+                        placeholder="Contoh: Interaksi Sosial dan Dinamika Masyarakat" 
+                        value={matForm.title}
+                        onChange={e => setMatForm({ ...matForm, title: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Durasi Membaca (Menit)</label>
+                      <input 
+                        type="number" 
+                        min="1" 
+                        required 
+                        value={matForm.durationMinutes}
+                        onChange={e => setMatForm({ ...matForm, durationMinutes: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">URL Gambar Header (Opsional)</label>
+                      <input 
+                        type="url" 
+                        placeholder="https://images.unsplash.com/..." 
+                        value={matForm.imageUrl}
+                        onChange={e => setMatForm({ ...matForm, imageUrl: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Isi Pembelajaran Materi</label>
+                      <textarea 
+                        rows="6" 
+                        required 
+                        placeholder="Tuliskan teks materi bacaan di sini..." 
+                        value={matForm.content}
+                        onChange={e => setMatForm({ ...matForm, content: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white outline-none focus:border-blue-500"
+                      ></textarea>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Sumber Referensi / Buku</label>
+                      <input 
+                        type="text" 
+                        placeholder="Buku Paket IPS SMP Kelas 7 Kemendikbud" 
+                        value={matForm.source}
+                        onChange={e => setMatForm({ ...matForm, source: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <button 
+                        type="submit" 
+                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/30 text-xs flex justify-center items-center gap-2"
+                      >
+                        {isEditMat ? 'Update Materi' : 'Terbitkan Materi'}
+                      </button>
+
+                      {isEditMat && (
+                        <button 
+                          type="button" 
+                          onClick={() => { setIsEditMat(false); setMatForm({ id: '', title: '', content: '', durationMinutes: 15, source: '', imageUrl: '' }); }}
+                          className="px-4 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold"
+                        >
+                          Batal
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+
+                {/* List Materi Terbit */}
+                <div className="lg:col-span-2 space-y-4">
+                  <h3 className="text-base font-extrabold text-white">Materi Diterbitkan untuk Kelas {filterKelas}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredMaterials.map((m) => (
+                      <div key={m.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-3 relative overflow-hidden shadow-lg">
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-bold px-2 py-0.5 rounded-lg">
+                              Kelas {m.kelas}
+                            </span>
+                            <span className="text-amber-400 font-mono text-[11px] flex items-center gap-1">
+                              <Clock className="w-3 h-3"/> {m.durationMinutes} Menit
+                            </span>
+                          </div>
+                          <h4 className="font-bold text-white text-sm line-clamp-1">{m.title}</h4>
+                          <p className="text-slate-400 text-xs line-clamp-3 mt-1">{m.content}</p>
+                        </div>
+
+                        <div className="flex justify-end items-center gap-2 pt-2 border-t border-slate-800/80">
+                          <button 
+                            onClick={() => { setMatForm(m); setIsEditMat(true); }}
+                            className="p-1.5 bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white rounded-lg border border-blue-500/20 transition-all text-xs flex items-center gap-1"
+                          >
+                            <Edit3 className="w-3.5 h-3.5"/> Edit
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteMaterial(m.id)}
+                            className="p-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg border border-rose-500/20 transition-all text-xs flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5"/> Hapus
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {filteredMaterials.length === 0 && (
+                      <div className="col-span-full bg-slate-900 border border-dashed border-slate-800 rounded-3xl p-8 text-center text-slate-500 text-xs">
+                        Belum ada materi IPS yang diterbitkan untuk Kelas {filterKelas}.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: BANK SOAL EVALUASI */}
+            {activeTab === 'questions' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Form Buat Soal */}
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4 h-fit">
+                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                    <HelpCircle className="w-5 h-5 text-blue-400" /> Tambah Soal Evaluasi
+                  </h3>
+
+                  <form onSubmit={handleSaveQuestion} className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Pilih Materi Pembelajaran</label>
+                      <select 
+                        value={questForm.materialId}
+                        onChange={e => setQuestForm({ ...questForm, materialId: e.target.value })}
+                        required
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                      >
+                        <option value="">-- Pilih Materi IPS --</option>
+                        {filteredMaterials.map(m => (
+                          <option key={m.id} value={m.id}>{m.title}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Pertanyaan / Pertanyaan Kuis</label>
+                      <textarea 
+                        rows="3" 
+                        required 
+                        placeholder="Tuliskan pertanyaan..." 
+                        value={questForm.questionText}
+                        onChange={e => setQuestForm({ ...questForm, questionText: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white outline-none focus:border-blue-500"
+                      ></textarea>
+                    </div>
+
+                    <div className="space-y-2 border-t border-b border-slate-800 py-3">
+                      <p className="text-[11px] font-bold text-slate-400">Pilihan Jawaban (Ganda):</p>
+                      {['A', 'B', 'C', 'D'].map(key => (
+                        <div key={key} className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-slate-400 w-4">{key}.</span>
+                          <input 
+                            type="text" 
+                            required
+                            placeholder={`Pilihan ${key}`}
+                            value={questForm[`option${key}`]}
+                            onChange={e => setQuestForm({ ...questForm, [`option${key}`]: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-blue-500"
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Kunci Jawaban Benar</label>
+                      <select 
+                        value={questForm.correctAnswer}
+                        onChange={e => setQuestForm({ ...questForm, correctAnswer: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                      >
+                        <option value="A">Pilihan A</option>
+                        <option value="B">Pilihan B</option>
+                        <option value="C">Pilihan C</option>
+                        <option value="D">Pilihan D</option>
+                      </select>
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/30 text-xs flex justify-center items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4"/> Simpan Soal Kuis
+                    </button>
+                  </form>
+                </div>
+
+                {/* List Bank Soal */}
+                <div className="lg:col-span-2 space-y-4">
+                  <h3 className="text-base font-extrabold text-white">Daftar Soal Evaluasi</h3>
+                  <div className="space-y-3">
+                    {questions.map((q, idx) => {
+                      const parentMat = materials.find(m => m.id === q.materialId);
+                      return (
+                        <div key={q.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 shadow-lg">
+                          <div className="flex justify-between items-start gap-4">
+                            <div>
+                              <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded font-semibold">
+                                {parentMat ? parentMat.title : 'Materi Terhapus'}
+                              </span>
+                              <h4 className="font-bold text-white text-xs mt-2">{idx + 1}. {q.questionText}</h4>
+                            </div>
+                            <button 
+                              onClick={() => handleDeleteQuestion(q.id)}
+                              className="p-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg border border-rose-500/20 transition-all"
+                            >
+                              <Trash2 className="w-3.5 h-3.5"/>
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {['A', 'B', 'C', 'D'].map(k => (
+                              <div key={k} className={`p-2 rounded-xl border ${q.correctAnswer === k ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
+                                {k}. {q[`option${k}`]}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {questions.length === 0 && (
+                      <div className="bg-slate-900 border border-dashed border-slate-800 rounded-3xl p-8 text-center text-slate-500 text-xs">
+                        Belum ada soal evaluasi yang dibuat.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: REKAP NILAI EVALUASI */}
+            {activeTab === 'scores' && (
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl p-6 space-y-4">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <Award className="w-5 h-5 text-amber-400" /> Rekapitulasi Nilai Evaluasi Siswa Kelas {filterKelas}{filterSubKelas}
+                </h3>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-semibold">
+                        <th className="p-3">Nama Siswa</th>
+                        <th className="p-3">Materi Evaluasi</th>
+                        <th className="p-3">Nilai Selesai</th>
+                        <th className="p-3">Waktu Selesai</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {scores.filter(sc => sc.kelas === filterKelas && sc.subKelas === filterSubKelas).map((sc) => (
+                        <tr key={sc.id} className="hover:bg-slate-800/40 transition-all">
+                          <td className="p-3 font-bold text-white">{sc.studentName}</td>
+                          <td className="p-3 text-slate-300">{sc.materialTitle}</td>
+                          <td className="p-3 font-mono font-extrabold text-emerald-400 text-sm">{sc.score} / 100</td>
+                          <td className="p-3 text-slate-500">{new Date(sc.createdAt).toLocaleString('id-ID')}</td>
+                        </tr>
+                      ))}
+
+                      {scores.filter(sc => sc.kelas === filterKelas && sc.subKelas === filterSubKelas).length === 0 && (
                         <tr>
-                          <td colSpan="6" className="p-12 text-center text-slate-500 italic">
-                            Belum ada siswa yang sedang aktif membaca materi secara realtime.
+                          <td colSpan="4" className="p-8 text-center text-slate-500 text-xs">
+                            Belum ada rekap nilai kuis untuk Kelas {filterKelas}{filterSubKelas}.
                           </td>
                         </tr>
                       )}
@@ -775,537 +939,8 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
                   </table>
                 </div>
               </div>
-            </div>
-          );
-        }
-
-        // TAB: Form Terbitkan Materi Baru
-        if (activeTab === 'tambah_materi') {
-          return (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 max-w-4xl mx-auto shadow-xl">
-              <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-800">
-                <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                  <PlusCircle className="text-blue-500 shrink-0"/> Terbitkan Materi Pembelajaran Baru
-                </h2>
-                <button onClick={() => setActiveTab('dashboard')} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs font-semibold">
-                  <ArrowLeft className="w-4 h-4"/> Kembali
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateMaterial} className="space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Judul Materi IPS</label>
-                    <input type="text" name="title" required className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:border-blue-500 outline-none" placeholder="Contoh: Keberagaman Etnis & Budaya Indonesia" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Durasi Timer Belajar (Menit)</label>
-                    <input type="number" min="1" max="180" name="durationMinutes" defaultValue="15" required className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:border-blue-500 outline-none" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Tingkat Kelas</label>
-                    <select name="kelas" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white">
-                      <option value="7">Kelas 7</option>
-                      <option value="8">Kelas 8</option>
-                      <option value="9">Kelas 9</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Target Rombel/Sub-Kelas</label>
-                    <select name="subKelasTarget" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white">
-                      <option value="semua">Semua Rombel (A, B, C, D)</option>
-                      <option value="A">Khusus Rombel A</option>
-                      <option value="B">Khusus Rombel B</option>
-                      <option value="C">Khusus Rombel C</option>
-                      <option value="D">Khusus Rombel D</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Semester</label>
-                    <select name="semester" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white">
-                      <option value="1">Semester 1 (Ganjil)</option>
-                      <option value="2">Semester 2 (Genap)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">URL Gambar Ilustrasi (Opsional)</label>
-                    <input type="url" name="imageUrl" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:border-blue-500 outline-none" placeholder="https://..." />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Sumber Referensi Materi</label>
-                    <input type="text" name="source" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:border-blue-500 outline-none" placeholder="Buku Paket IPS Kemendikbudristek Hal. 85" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Teks Isi Materi Pembelajaran</label>
-                  <textarea name="content" required rows="12" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:border-blue-500 outline-none leading-relaxed font-sans" placeholder="Tuliskan rangkuman dan uraian materi IPS secara mendalam di sini..."></textarea>
-                </div>
-
-                <button type="submit" className="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg shadow-blue-600/30 text-xs active:scale-95">
-                  Terbitkan Materi Pembelajaran (Sync Cloud)
-                </button>
-              </form>
-            </div>
-          );
-        }
-
-        // TAB: Kelola Soal Latihan & Kuis
-        if (activeTab === 'kelola_soal' && selectedMaterial) {
-          const matQuestions = questions.filter(q => q.materialId === selectedMaterial.id);
-          return (
-            <div className="space-y-6 max-w-4xl mx-auto">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl">
-                <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-800">
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2"><List className="text-blue-500 shrink-0"/> Kelola Soal Latihan & Evaluasi</h2>
-                    <p className="text-slate-400 text-xs mt-1">Materi: <span className="text-white font-semibold">{selectedMaterial.title}</span> (Kelas {selectedMaterial.kelas})</p>
-                  </div>
-                  <button onClick={() => {setActiveTab('dashboard'); setSelectedMaterial(null);}} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs font-semibold">
-                    <ArrowLeft className="w-4 h-4"/> Kembali
-                  </button>
-                </div>
-
-                <form onSubmit={handleAddQuestion} className="space-y-4 bg-slate-950 p-4 sm:p-5 rounded-xl border border-slate-800">
-                  <h3 className="font-semibold text-white text-xs">Buat Pertanyaan Baru</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Pertanyaan / Soal</label>
-                      <input type="text" name="questionText" required className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:border-blue-500 outline-none" placeholder="Tuliskan pertanyaan soal..." />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Tipe Soal</label>
-                      <select id="questionTypeSelect" name="type" className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white" onChange={(e) => {
-                        const pgContainer = document.getElementById('pgOptionsContainer');
-                        const isianContainer = document.getElementById('isianAnswerContainer');
-                        if (e.target.value === 'pg') {
-                          pgContainer.style.display = 'block';
-                          isianContainer.style.display = 'none';
-                        } else {
-                          pgContainer.style.display = 'none';
-                          isianContainer.style.display = 'block';
-                        }
-                      }}>
-                        <option value="pg">Pilihan Ganda (A, B, C, D)</option>
-                        <option value="isian">Isian Singkat</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div id="pgOptionsContainer" className="space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div><label className="block text-[11px] text-slate-400 mb-1">Opsi A</label><input type="text" name="optionA" className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white" /></div>
-                      <div><label className="block text-[11px] text-slate-400 mb-1">Opsi B</label><input type="text" name="optionB" className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white" /></div>
-                      <div><label className="block text-[11px] text-slate-400 mb-1">Opsi C</label><input type="text" name="optionC" className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white" /></div>
-                      <div><label className="block text-[11px] text-slate-400 mb-1">Opsi D</label><input type="text" name="optionD" className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white" /></div>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">Kunci Jawaban Pilihan Ganda</label>
-                      <select name="correctAnswer" className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white">
-                        <option value="A">Opsi A</option>
-                        <option value="B">Opsi B</option>
-                        <option value="C">Opsi C</option>
-                        <option value="D">Opsi D</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div id="isianAnswerContainer" className="hidden">
-                    <label className="block text-[11px] text-slate-400 mb-1">Kunci Jawaban / Kata Kunci Isian</label>
-                    <input type="text" name="correctAnswerIsian" placeholder="Jawaban singkat yang benar..." className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white" />
-                  </div>
-
-                  <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-6 rounded-xl text-xs transition-all shadow-md active:scale-95">
-                    + Simpan Soal ke Cloud
-                  </button>
-                </form>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl">
-                <h3 className="font-bold text-white text-sm mb-4">Daftar Soal Tersimpan ({matQuestions.length})</h3>
-                <div className="space-y-3">
-                  {matQuestions.map((q, idx) => (
-                    <div key={q.id} className="p-4 rounded-xl bg-slate-950 border border-slate-800 relative">
-                      <button onClick={() => handleDeleteQuestion(q.id)} className="absolute top-4 right-4 text-slate-500 hover:text-red-400 transition-colors" title="Hapus Soal">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <p className="font-semibold text-slate-200 text-xs mb-2 pr-8">{idx + 1}. {q.questionText} <span className="text-[10px] text-blue-400 font-normal">({q.type === 'pg' ? 'Pilihan Ganda' : 'Isian'})</span></p>
-                      
-                      {q.type === 'pg' ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-400">
-                          <div className={q.correctAnswer === 'A' ? 'text-emerald-400 font-bold' : ''}>A. {q.optionA}</div>
-                          <div className={q.correctAnswer === 'B' ? 'text-emerald-400 font-bold' : ''}>B. {q.optionB}</div>
-                          <div className={q.correctAnswer === 'C' ? 'text-emerald-400 font-bold' : ''}>C. {q.optionC}</div>
-                          <div className={q.correctAnswer === 'D' ? 'text-emerald-400 font-bold' : ''}>D. {q.optionD}</div>
-                        </div>
-                      ) : (
-                        <p className="text-[11px] text-emerald-400">Kunci Jawaban: {q.correctAnswer}</p>
-                      )}
-                    </div>
-                  ))}
-                  {matQuestions.length === 0 && <p className="text-slate-500 text-xs italic">Belum ada soal latihan untuk materi ini.</p>}
-                </div>
-              </div>
-            </div>
-          );
-        }
-
-        // TAB: Upload & Kelola Data Siswa Cloud Database
-        if (activeTab === 'upload_siswa') {
-          const currentFilteredStudents = students.filter(s => s.kelas === manageStudentClass && s.subKelas === manageStudentSubClass);
-          
-          return (
-            <div className="space-y-6 max-w-5xl mx-auto">
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2"><UserPlus className="text-blue-500 shrink-0"/> Kelola Siswa Cloud (Portal Siswa Ready)</h2>
-                <button onClick={() => setActiveTab('dashboard')} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs font-semibold">
-                  <ArrowLeft className="w-4 h-4"/> Kembali
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl">
-                  <h3 className="font-bold text-white text-xs mb-4 flex items-center gap-2"><Upload className="w-4 h-4 text-blue-500" /> Batch Upload ke Cloud Database</h3>
-                  <form onSubmit={handleUploadStudents} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1">Pilih Kelas</label>
-                        <select value={studentInputKelas} onChange={(e) => setStudentInputKelas(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white">
-                          <option value="7">Kelas 7</option>
-                          <option value="8">Kelas 8</option>
-                          <option value="9">Kelas 9</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1">Pilih Rombel</label>
-                        <select value={studentInputSubKelas} onChange={(e) => setStudentInputSubKelas(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white">
-                          <option value="A">Rombel A</option>
-                          <option value="B">Rombel B</option>
-                          <option value="C">Rombel C</option>
-                          <option value="D">Rombel D</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Daftar Nama Siswa (Copy-Paste 1 Nama Per Baris)</label>
-                      <textarea 
-                        rows="8" 
-                        value={rawStudentNames}
-                        onChange={(e) => setRawStudentNames(e.target.value)}
-                        placeholder="Contoh:&#10;Ahmad Rizky Pratama&#10;Anisa Rahmawati&#10;Budi Santoso"
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white outline-none focus:border-blue-500 leading-relaxed"
-                      ></textarea>
-                    </div>
-
-                    <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-md active:scale-95">
-                      Simpan Ke Cloud Database (Kelas {studentInputKelas}{studentInputSubKelas})
-                    </button>
-                  </form>
-                </div>
-
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-white text-xs">Daftar Siswa (Tersinkronisasi Cloud)</h3>
-                    <div className="flex gap-2">
-                      <select value={manageStudentClass} onChange={(e) => setManageStudentClass(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 text-xs text-white">
-                        <option value="7">Kelas 7</option>
-                        <option value="8">Kelas 8</option>
-                        <option value="9">Kelas 9</option>
-                      </select>
-                      <select value={manageStudentSubClass} onChange={(e) => setManageStudentSubClass(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-lg p-1.5 text-xs text-white">
-                        <option value="A">Rombel A</option>
-                        <option value="B">Rombel B</option>
-                        <option value="C">Rombel C</option>
-                        <option value="D">Rombel D</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto max-h-[350px] space-y-2 pr-1">
-                    {currentFilteredStudents.map((st, i) => (
-                      <div key={st.id} className="flex justify-between items-center p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300">
-                        <span>{i + 1}. {st.name}</span>
-                        <button onClick={() => handleDeleteStudent(st.id)} className="text-slate-500 hover:text-red-400 p-1" title="Hapus Siswa">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                    {currentFilteredStudents.length === 0 && (
-                      <p className="text-center text-slate-500 text-xs py-12 italic">Belum ada nama siswa di Cloud untuk Kelas {manageStudentClass}{manageStudentSubClass}.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        }
-
-        // TAB: Rekap Nilai Kuis
-        if (activeTab === 'rekap_nilai') {
-          const filteredScores = scores.filter(s => {
-            const matchClass = rekapFilterClass === 'semua' || s.kelas === rekapFilterClass;
-            const matchSubClass = rekapFilterSubClass === 'semua' || s.subKelas === rekapFilterSubClass;
-            return matchClass && matchSubClass;
-          });
-
-          return (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden max-w-5xl mx-auto shadow-xl">
-              <div className="p-4 sm:p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2"><Award className="text-yellow-500 shrink-0"/> Rekap Nilai Evaluasi Siswa</h2>
-                  <p className="text-slate-400 text-xs mt-1">Unduh rekap nilai per kelas dalam bentuk format Microsoft Excel (.xlsx)</p>
-                </div>
-                
-                <div className="flex flex-wrap items-center gap-2">
-                  <button 
-                    onClick={() => exportToExcel(filteredScores)} 
-                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 active:scale-95"
-                  >
-                    <Download className="w-4 h-4"/> Download Rekap Nilai (.xlsx)
-                  </button>
-                  <button onClick={() => setActiveTab('dashboard')} className="hidden sm:flex text-slate-400 hover:text-white items-center gap-1 text-xs font-semibold bg-slate-950 px-3 py-2 rounded-xl border border-slate-800">
-                    <ArrowLeft className="w-4 h-4"/> Kembali
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-4 bg-slate-950/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-slate-400 font-semibold flex items-center gap-1">
-                    <Filter className="w-3.5 h-3.5 text-blue-400" /> Filter Kelas:
-                  </span>
-                  <select 
-                    value={rekapFilterClass} 
-                    onChange={(e) => setRekapFilterClass(e.target.value)}
-                    className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white outline-none focus:border-blue-500"
-                  >
-                    <option value="semua">Semua Tingkat Kelas</option>
-                    <option value="7">Kelas 7</option>
-                    <option value="8">Kelas 8</option>
-                    <option value="9">Kelas 9</option>
-                  </select>
-
-                  <select 
-                    value={rekapFilterSubClass} 
-                    onChange={(e) => setRekapFilterSubClass(e.target.value)}
-                    className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white outline-none focus:border-blue-500"
-                  >
-                    <option value="semua">Semua Rombel</option>
-                    <option value="A">Rombel A</option>
-                    <option value="B">Rombel B</option>
-                    <option value="C">Rombel C</option>
-                    <option value="D">Rombel D</option>
-                  </select>
-                </div>
-
-                <div className="text-slate-400 text-[11px]">
-                  Menampilkan <span className="text-white font-bold">{filteredScores.length}</span> Data Nilai
-                </div>
-              </div>
-
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800">
-                      <th className="p-4">No</th>
-                      <th className="p-4">Nama Siswa</th>
-                      <th className="p-4">Kelas & Rombel</th>
-                      <th className="p-4">Materi IPS</th>
-                      <th className="p-4 text-center">Nilai Akhir</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800 text-slate-300">
-                    {filteredScores.map((s, idx) => (
-                      <tr key={s.id || idx} className="hover:bg-slate-800/50">
-                        <td className="p-4 text-slate-500 font-mono">{idx + 1}</td>
-                        <td className="p-4 font-bold text-white">{s.studentName}</td>
-                        <td className="p-4">
-                          <span className="bg-slate-800 px-2 py-0.5 rounded text-[11px]">Kelas {s.kelas}</span>
-                        </td>
-                        <td className="p-4">{s.materialTitle}</td>
-                        <td className="p-4 text-center">
-                          <span className={`inline-block px-3 py-1 rounded-full font-bold ${s.score >= 70 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
-                            {s.score} / 100
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredScores.length === 0 && (
-                      <tr><td colSpan="5" className="p-8 text-center text-slate-500 italic">Belum ada data nilai kuis untuk filter kelas ini.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          );
-        }
-
-        // DASHBOARD UTAMA GURU
-        const filteredMaterials = filterClassGuru === 'semua' 
-          ? materials 
-          : materials.filter(m => m.kelas === filterClassGuru);
-
-        return (
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
-              <div className="flex flex-wrap items-center gap-2">
-                <button onClick={() => setActiveTab('tambah_materi')} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-lg shadow-blue-600/30 transition-all active:scale-95">
-                  <PlusCircle className="w-4 h-4"/> Terbitkan Materi
-                </button>
-                <button onClick={() => setActiveTab('monitor')} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-lg shadow-emerald-600/30 transition-all active:scale-95">
-                  <Radio className="w-4 h-4 animate-pulse"/> Pantauan Realtime
-                </button>
-                <button onClick={() => setActiveTab('upload_siswa')} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all active:scale-95">
-                  <UserPlus className="w-4 h-4 text-blue-400"/> Kelola Siswa Cloud
-                </button>
-                <button onClick={() => setActiveTab('rekap_nilai')} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all active:scale-95">
-                  <Award className="w-4 h-4 text-yellow-500"/> Rekap Nilai (.xlsx)
-                </button>
-              </div>
-
-              <div className="flex items-center gap-1 text-xs font-semibold bg-slate-950 p-1 rounded-xl border border-slate-800 overflow-x-auto">
-                <span className="px-2 text-slate-500 shrink-0">Filter:</span>
-                {['semua', '7', '8', '9'].map(k => (
-                  <button 
-                    key={k}
-                    onClick={() => setFilterClassGuru(k)}
-                    className={`px-3 py-1.5 rounded-lg capitalize whitespace-nowrap transition-all ${filterClassGuru === k ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    {k === 'semua' ? 'Semua Kelas' : `Kelas ${k}`}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredMaterials.map(m => {
-                const qCount = questions.filter(q => q.materialId === m.id).length;
-                return (
-                  <div key={m.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col hover:border-slate-700 transition-all shadow-xl">
-                    {m.imageUrl && (
-                      <div className="h-40 bg-slate-950 overflow-hidden">
-                        <img src={m.imageUrl} alt={m.title} className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                    <div className="p-5 flex-1 flex flex-col">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="bg-blue-500/10 text-blue-400 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-blue-500/20">
-                          Kelas {m.kelas} • Smt {m.semester}
-                        </span>
-                        <button onClick={() => handleDeleteMaterial(m.id)} className="text-slate-500 hover:text-red-400 transition-colors p-1" title="Hapus Materi">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      
-                      <h3 className="font-bold text-white text-sm mb-1 leading-snug">{m.title}</h3>
-                      <div className="flex items-center gap-2 text-[11px] text-amber-400 font-semibold mb-3">
-                        <Clock className="w-3.5 h-3.5" /> Timer Belajar: {m.durationMinutes} Menit
-                      </div>
-                      <p className="text-xs text-slate-400 line-clamp-3 mb-4 leading-relaxed">{m.content}</p>
-
-                      <div className="pt-4 border-t border-slate-800 mt-auto flex items-center justify-between">
-                        <span className="text-xs text-slate-400 font-medium">{qCount} Soal/Kuis</span>
-                        <button 
-                          onClick={() => { setSelectedMaterial(m); setActiveTab('kelola_soal'); }}
-                          className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl transition-all text-xs font-semibold flex items-center gap-1 active:scale-95"
-                        >
-                          <List className="w-3.5 h-3.5"/> Kelola Soal
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {filteredMaterials.length === 0 && (
-                <div className="col-span-full p-12 text-center text-slate-500 border border-dashed border-slate-800 rounded-2xl">
-                  <BookOpen className="w-10 h-10 mx-auto mb-2 text-slate-600"/>
-                  <p className="font-semibold text-xs">Belum ada materi pembelajaran terbit untuk kelas ini.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      };
-
-      return (
-        <div className="min-h-screen bg-slate-950 text-slate-100">
-          {notification && (
-            <div className="fixed top-4 right-4 z-50 bg-blue-600 text-white px-5 py-3 rounded-2xl shadow-xl font-bold text-xs animate-bounce border border-blue-400/30">
-              {notification}
-            </div>
-          )}
-
-          <nav className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between h-16 items-center">
-                <div className="flex items-center gap-3 cursor-pointer" onClick={() => {setActiveTab('dashboard'); setSelectedMaterial(null);}}>
-                  <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-600/30">
-                    <Lock className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-base font-extrabold text-white block leading-none">Dashboard Guru IPS</span>
-                    <span className="text-[10px] text-slate-400">SMP/MTs Portal Pengajar</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="text-right hidden sm:block">
-                    <div className="text-xs font-bold text-white">{appSession.username}</div>
-                    <div className="text-[10px] text-slate-400">Guru Pengajar IPS</div>
-                  </div>
-                  <button onClick={handleLogout} className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all">
-                    <LogOut className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Keluar</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </nav>
-
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-            {renderTeacherContent()}
+            )}
           </main>
-
-          <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 z-50 px-3 py-2 flex justify-around items-center">
-            <button 
-              onClick={() => { setActiveTab('dashboard'); setSelectedMaterial(null); }}
-              className={`flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-[10px] font-semibold transition-all ${activeTab === 'dashboard' ? 'text-blue-400' : 'text-slate-400'}`}
-            >
-              <LayoutDashboard className="w-5 h-5"/>
-              Materi
-            </button>
-            <button 
-              onClick={() => setActiveTab('monitor')}
-              className={`flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-[10px] font-semibold transition-all ${activeTab === 'monitor' ? 'text-emerald-400' : 'text-slate-400'}`}
-            >
-              <Radio className="w-5 h-5"/>
-              Monitor
-            </button>
-            <button 
-              onClick={() => setActiveTab('upload_siswa')}
-              className={`flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-[10px] font-semibold transition-all ${activeTab === 'upload_siswa' ? 'text-blue-400' : 'text-slate-400'}`}
-            >
-              <UserPlus className="w-5 h-5"/>
-              Siswa
-            </button>
-            <button 
-              onClick={() => setActiveTab('rekap_nilai')}
-              className={`flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-[10px] font-semibold transition-all ${activeTab === 'rekap_nilai' ? 'text-yellow-400' : 'text-slate-400'}`}
-            >
-              <Award className="w-5 h-5"/>
-              Nilai
-            </button>
-          </div>
         </div>
       );
     }

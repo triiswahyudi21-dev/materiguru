@@ -172,8 +172,10 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
         return local ? JSON.parse(local) : defaultMaterials;
       });
 
-     const questionsRef = doc(db, 'artifacts', appId, 'public', 'data_questions');
-await setDoc(questionsRef, { list: listSoalBaru });
+      const [questions, setQuestions] = useState(() => {
+        const local = localStorage.getItem('elearning_questions_v3');
+        return local ? JSON.parse(local) : defaultQuestions;
+      });
 
       const [students, setStudents] = useState(() => {
         const local = localStorage.getItem('elearning_students_v3');

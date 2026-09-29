@@ -256,6 +256,10 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
               const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'materials', m.id);
               await setDoc(docRef, m);
             }
+            
+            // Simpan juga sebagai daftar soal di dokumen data_questions
+            const questionsRef = doc(db, 'artifacts', appId, 'public', 'data_questions');
+            await setDoc(questionsRef, { list: questions });
           } catch (e) {
             console.log("Offline mode active for initial sync");
           }
@@ -320,6 +324,9 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'questions', q.id);
             await setDoc(docRef, q);
           }
+          // Simpan seluruh daftar soal ke data_questions
+          const questionsRef = doc(db, 'artifacts', appId, 'public', 'data_questions');
+          await setDoc(questionsRef, { list: questions });
         } catch (e) {
           console.log("Gagal sinkronisasi otomatis soal ke cloud");
         }
@@ -442,18 +449,24 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
       const handleDeleteMaterial = async (id) => {
         if (!window.confirm("Apakah Anda yakin ingin menghapus materi ini beserta seluruh soalnya?")) return;
         setMaterials(prev => prev.filter(m => m.id !== id));
-        
-        const questionsToDelete = questions.filter(q => q.materialId === id);
-        setQuestions(prev => prev.filter(q => q.materialId !== id));
+
+        const remainingQuestions = questions.filter(q => q.materialId !== id);
+        setQuestions(remainingQuestions);
 
         try {
           const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'materials', id);
           await deleteDoc(docRef);
 
+          const questionsToDelete = questions.filter(q => q.materialId === id);
           for (const q of questionsToDelete) {
             const qRef = doc(db, 'artifacts', appId, 'public', 'data', 'questions', q.id);
             await deleteDoc(qRef);
           }
+
+          // Sinkronisasi pembaruan list soal ke data_questions
+          const listSoalBaru = remainingQuestions;
+          const questionsRef = doc(db, 'artifacts', appId, 'public', 'data_questions');
+          await setDoc(questionsRef, { list: listSoalBaru });
         } catch (e) {}
 
         showNotification("Materi beserta soal terkait telah dihapus.");
@@ -483,7 +496,8 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
           newQ.correctAnswer = formData.get('correctAnswerIsian');
         }
 
-        setQuestions(prev => [...prev, newQ]);
+        const listSoalBaru = [...questions, newQ];
+        setQuestions(listSoalBaru);
 
         if (broadcast) {
           broadcast.postMessage({ type: 'NEW_QUESTION_ADDED', payload: newQ });
@@ -492,6 +506,11 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
         try {
           const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'questions', newQ.id);
           await setDoc(docRef, newQ);
+
+          // Simpan seluruh daftar soal terbaru ke dokumen data_questions
+          const questionsRef = doc(db, 'artifacts', appId, 'public', 'data_questions');
+          await setDoc(questionsRef, { list: listSoalBaru });
+
           showNotification("Soal berhasil ditambahkan & tersinkron ke Portal Siswa!");
         } catch (err) {
           showNotification("Soal tersimpan di penyimpanan lokal.");
@@ -501,11 +520,16 @@ Globalisasi adalah proses mendunia yang menghilangkan sekat geografis antar nega
       };
 
       const handleDeleteQuestion = async (qId) => {
-        setQuestions(prev => prev.filter(q => q.id !== qId));
+        const listSoalBaru = questions.filter(q => q.id !== qId);
+        setQuestions(listSoalBaru);
 
         try {
           const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'questions', qId);
           await deleteDoc(docRef);
+
+          // Update dokumen data_questions
+          const questionsRef = doc(db, 'artifacts', appId, 'public', 'data_questions');
+          await setDoc(questionsRef, { list: listSoalBaru });
         } catch (e) {}
 
         showNotification("Soal berhasil dihapus.");
